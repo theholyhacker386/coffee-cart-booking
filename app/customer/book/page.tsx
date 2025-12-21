@@ -7,6 +7,13 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
 
+// Google Maps types
+declare global {
+  interface Window {
+    google: any
+  }
+}
+
 export default function BookingInquiryForm() {
   // Google Maps autocomplete reference
   const addressInputRef = useRef<HTMLInputElement>(null)
@@ -40,7 +47,7 @@ export default function BookingInquiryForm() {
   // Service Selection (Private Events Only)
   const [extraHours, setExtraHours] = useState(0)
   const [drinkPackage, setDrinkPackage] = useState<'drip' | 'standard' | 'premium' | 'kombucha' | 'hotchoc' | ''>('')
-  const [numberOfDrinks, setNumberOfDrinks] = useState(25)
+  const [numberOfDrinks, setNumberOfDrinks] = useState(0)
   const [drinkLimit, setDrinkLimit] = useState<'stop' | 'contact' | ''>('')
   const [paymentMethod, setPaymentMethod] = useState<'openbar' | 'ticket' | 'guestpay' | ''>('')
 
@@ -54,22 +61,30 @@ export default function BookingInquiryForm() {
   const [signature, setSignature] = useState('')
   const [signatureDate, setSignatureDate] = useState(new Date().toISOString().split('T')[0])
 
+  // Success modal
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false)
+
   // Initialize Google Maps Autocomplete
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.google && addressInputRef.current) {
-      const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
-        types: ['address'],
-        componentRestrictions: { country: 'us' }
-      })
+    if (googleMapsLoaded && addressInputRef.current) {
+      try {
+        const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+          types: ['address'],
+          componentRestrictions: { country: 'us' }
+        })
 
-      autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace()
-        if (place.formatted_address) {
-          setEventAddress(place.formatted_address)
-        }
-      })
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace()
+          if (place.formatted_address) {
+            setEventAddress(place.formatted_address)
+          }
+        })
+      } catch (error) {
+        console.error('Error initializing Google Maps autocomplete:', error)
+      }
     }
-  }, [])
+  }, [googleMapsLoaded])
 
   // Calculate tier and pricing (Private Events Only)
   const calculatePricing = () => {
@@ -158,9 +173,9 @@ export default function BookingInquiryForm() {
       total += numberOfDrinks * 5
     }
 
-    // Add-on Kombucha (only for espresso packages)
-    if (kombucha && kombuchaQuantity > 0 && (drinkPackage === 'standard' || drinkPackage === 'premium')) {
-      total += 35 + (kombuchaQuantity * 6)
+    // Add-on Kombucha (only for espresso packages) - flat $35 fee
+    if (kombucha && (drinkPackage === 'standard' || drinkPackage === 'premium')) {
+      total += 35
     }
 
     return total
@@ -168,16 +183,41 @@ export default function BookingInquiryForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Send automatic email with proposal/estimate
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerName,
+          email,
+          phone,
+          eventDate,
+          eventAddress,
+          eventType: eventType === 'Other' ? customEventType : eventType,
+          drinkPackage,
+          numberOfDrinks,
+          extraHours,
+          totalEstimate: calculateTotal(),
+          kombucha,
+          hotChocolate,
+        }),
+      })
+
+      if (!response.ok) {
+        console.error('Failed to send email')
+      }
+    } catch (error) {
+      console.error('Error sending email:', error)
+    }
+
     // TODO: Send inquiry to Supabase
 
-    // Show different message based on event type and payment method
-    if (eventCategory === 'public') {
-      alert('☕ Thank you for your inquiry!\n\nWe\'ll review your public event details and contact you within 24 hours.')
-    } else if (eventCategory === 'private' && paymentMethod === 'guestpay') {
-      alert('☕ Your estimate is brewing!\n\nSomeone from The Porch will contact you soon!')
-    } else {
-      alert(`Inquiry submitted! We'll contact you at ${email} within 24 hours.`)
-    }
+    // Show success modal
+    setShowSuccessModal(true)
   }
 
   const totalEstimate = calculateTotal()
@@ -187,57 +227,59 @@ export default function BookingInquiryForm() {
       {/* Google Maps API Script */}
       <Script
         src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`}
-        strategy="beforeInteractive"
+        strategy="afterInteractive"
+        onLoad={() => setGoogleMapsLoaded(true)}
+        onError={(e) => console.error('Error loading Google Maps:', e)}
       />
 
-      <div className="min-h-screen bg-white py-12">
-        <div className="max-w-3xl mx-auto px-6">
+      <div className="min-h-screen bg-white py-6 sm:py-12">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
           {/* Header */}
-          <div className="text-center mb-12">
-            <Link href="/customer" className="text-sm text-gray-500 hover:text-black">
+          <div className="text-center mb-8 sm:mb-12">
+            <Link href="/customer" className="text-sm text-gray-500 hover:text-black inline-block mb-4">
               ← Back to Home
             </Link>
-            <h1 className="text-4xl font-serif text-black mt-4 mb-2">
+            <h1 className="text-3xl sm:text-4xl font-serif text-black mb-2">
               Event Inquiry
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 text-sm sm:text-base">
               Complete the form below to request coffee cart service
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-12">
+          <form onSubmit={handleSubmit} className="space-y-8 sm:space-y-12">
             {/* Section 0: Event Category */}
-            <div className="border-t border-black/10 pt-8">
-              <h2 className="text-2xl font-serif text-black mb-6">Event Category</h2>
-              <div className="space-y-4">
-              <label className="flex items-center border-2 border-gray-300 p-4 cursor-pointer hover:border-black transition-colors">
+            <div className="border-t border-black/10 pt-6 sm:pt-8">
+              <h2 className="text-xl sm:text-2xl font-serif text-black mb-4 sm:mb-6">Event Category</h2>
+              <div className="space-y-3 sm:space-y-4">
+              <label className="flex items-start sm:items-center border-2 border-gray-300 p-3 sm:p-4 cursor-pointer hover:border-black transition-colors rounded-lg">
                 <input
                   type="radio"
                   value="private"
                   checked={eventCategory === 'private'}
                   onChange={(e) => setEventCategory('private')}
-                  className="mr-3"
+                  className="mr-3 mt-1 sm:mt-0 flex-shrink-0"
                   required
                 />
                 <div>
-                  <strong>Private Event</strong>
+                  <strong className="text-base">Private Event</strong>
                   <p className="text-sm text-gray-600">
                     Wedding, party, corporate event, etc.
                   </p>
                 </div>
               </label>
 
-              <label className="flex items-center border-2 border-gray-300 p-4 cursor-pointer hover:border-black transition-colors">
+              <label className="flex items-start sm:items-center border-2 border-gray-300 p-3 sm:p-4 cursor-pointer hover:border-black transition-colors rounded-lg">
                 <input
                   type="radio"
                   value="public"
                   checked={eventCategory === 'public'}
                   onChange={(e) => setEventCategory('public')}
-                  className="mr-3"
+                  className="mr-3 mt-1 sm:mt-0 flex-shrink-0"
                   required
                 />
                 <div>
-                  <strong>Public Event</strong>
+                  <strong className="text-base">Public Event</strong>
                   <p className="text-sm text-gray-600">
                     Festival, fair, market, public gathering
                   </p>
@@ -263,8 +305,8 @@ export default function BookingInquiryForm() {
           </div>
 
           {/* Section 1: Customer Information */}
-          <div className="border-t border-black/10 pt-8">
-            <h2 className="text-2xl font-serif text-black mb-6">Customer Information</h2>
+          <div className="border-t border-black/10 pt-6 sm:pt-8">
+            <h2 className="text-xl sm:text-2xl font-serif text-black mb-4 sm:mb-6">Customer Information</h2>
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-black mb-2">
@@ -374,8 +416,8 @@ export default function BookingInquiryForm() {
           </div>
 
           {/* Section 2: Event Details */}
-          <div className="border-t border-black/10 pt-8">
-            <h2 className="text-2xl font-serif text-black mb-6">Event Details</h2>
+          <div className="border-t border-black/10 pt-6 sm:pt-8">
+            <h2 className="text-xl sm:text-2xl font-serif text-black mb-4 sm:mb-6">Event Details</h2>
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-black mb-2">
@@ -472,8 +514,8 @@ export default function BookingInquiryForm() {
           </div>
 
           {/* Section 3: Day-of Contact */}
-          <div className="border-t border-black/10 pt-8">
-            <h2 className="text-2xl font-serif text-black mb-6">Day-of Contact Person</h2>
+          <div className="border-t border-black/10 pt-6 sm:pt-8">
+            <h2 className="text-xl sm:text-2xl font-serif text-black mb-4 sm:mb-6">Day-of Contact Person</h2>
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-black mb-2">
@@ -507,8 +549,8 @@ export default function BookingInquiryForm() {
           {/* Service Selection - PRIVATE EVENTS ONLY */}
           {eventCategory === 'private' && (
             <>
-              <div className="border-t border-black/10 pt-8">
-                <h2 className="text-2xl font-serif text-black mb-6">Service Selection</h2>
+              <div className="border-t border-black/10 pt-6 sm:pt-8">
+                <h2 className="text-xl sm:text-2xl font-serif text-black mb-4 sm:mb-6">Service Selection</h2>
 
                 {/* Payment Method */}
                 <div className="mb-8">
@@ -588,7 +630,7 @@ export default function BookingInquiryForm() {
                 {/* Drink Package */}
                 <div className="mb-8">
                   <label className="block text-sm font-medium text-black mb-4">
-                    Select Drink Package *
+                    Select Drink Package and Number of Drinks to Serve *
                   </label>
                   <div className="space-y-4">
                     <label className="block border-2 border-gray-300 p-4 cursor-pointer hover:border-black transition-colors">
@@ -690,43 +732,31 @@ export default function BookingInquiryForm() {
                   </div>
                 </div>
 
-                {/* Additional Hours */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-serif text-black mb-6">Add Additional Hours</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Your package includes 2 hours of service. Add more hours below:
-                  </p>
-                  <select
-                    value={extraHours}
-                    onChange={(e) => setExtraHours(Number(e.target.value))}
-                    className="w-full px-4 py-3 border border-gray-300 focus:border-black focus:ring-1 focus:ring-black"
-                  >
-                    <option value={0}>2 hours (included)</option>
-                    <option value={1}>3 hours total (+1 hour)</option>
-                    <option value={2}>4 hours total (+2 hours)</option>
-                    <option value={3}>5 hours total (+3 hours)</option>
-                    <option value={4}>6 hours total (+4 hours)</option>
-                    <option value={5}>7 hours total (+5 hours)</option>
-                    <option value={6}>8 hours total (+6 hours)</option>
-                  </select>
-                </div>
-
                 {/* Number of Drinks */}
                 <div className="mb-8">
                   <label className="block text-sm font-medium text-black mb-2">
                     Number of Drinks (Minimum 25) *
                   </label>
                   <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={numberOfDrinks}
+                    type="number"
+                    min="25"
+                    value={numberOfDrinks === 0 ? '' : numberOfDrinks}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '')
-                      setNumberOfDrinks(value ? Number(value) : 25)
+                      const value = e.target.value
+                      if (value === '') {
+                        setNumberOfDrinks(0)
+                      } else {
+                        setNumberOfDrinks(Number(value))
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // When they click away, enforce minimum of 25
+                      if (!e.target.value || Number(e.target.value) < 25) {
+                        setNumberOfDrinks(25)
+                      }
                     }}
                     className="w-full px-4 py-3 border border-gray-300 focus:border-black focus:ring-1 focus:ring-black"
-                    placeholder="Enter number of drinks"
+                    placeholder="Enter number of drinks (minimum 25)"
                     required
                   />
 
@@ -798,6 +828,29 @@ export default function BookingInquiryForm() {
                   <div className="border-t border-black/10 pt-8">
                     <h3 className="text-xl font-serif text-black mb-6">Add-ons</h3>
 
+                    {/* Additional Hours */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-black mb-2">
+                        Additional Hours
+                      </label>
+                      <p className="text-sm text-gray-600 mb-3">
+                        Your package includes 2 hours of service. Add more hours below:
+                      </p>
+                      <select
+                        value={extraHours}
+                        onChange={(e) => setExtraHours(Number(e.target.value))}
+                        className="w-full px-4 py-3 border border-gray-300 focus:border-black focus:ring-1 focus:ring-black"
+                      >
+                        <option value={0}>2 hours (included)</option>
+                        <option value={1}>3 hours total (+1 hour)</option>
+                        <option value={2}>4 hours total (+2 hours)</option>
+                        <option value={3}>5 hours total (+3 hours)</option>
+                        <option value={4}>6 hours total (+4 hours)</option>
+                        <option value={5}>7 hours total (+5 hours)</option>
+                        <option value={6}>8 hours total (+6 hours)</option>
+                      </select>
+                    </div>
+
                     {/* Hot Chocolate - for drip and espresso packages */}
                     <div className="mb-6">
                       <label className="flex items-start">
@@ -830,25 +883,9 @@ export default function BookingInquiryForm() {
                           />
                           <div>
                             <strong>Kombucha Add-on</strong>
-                            <p className="text-sm text-gray-600">$35 setup fee + $6 per drink</p>
+                            <p className="text-sm text-gray-600">$35 fee - Kombucha drinks included in your package total</p>
                           </div>
                         </label>
-
-                        {kombucha && (
-                          <div className="ml-8">
-                            <label className="block text-sm font-medium text-black mb-2">
-                              Number of Kombucha Drinks *
-                            </label>
-                            <input
-                              type="number"
-                              min="1"
-                              value={kombuchaQuantity}
-                              onChange={(e) => setKombuchaQuantity(Number(e.target.value))}
-                              className="w-full px-4 py-3 border border-gray-300 focus:border-black focus:ring-1 focus:ring-black"
-                              required
-                            />
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
@@ -897,11 +934,11 @@ export default function BookingInquiryForm() {
                         <div className="flex justify-between">
                           <span>
                             {drinkPackage === 'drip' && 'Drip Coffee'}
-                            {drinkPackage === 'standard' && 'Standard Espresso'}
-                            {drinkPackage === 'premium' && 'Premium Espresso'}
+                            {drinkPackage === 'standard' && `Standard Espresso${kombucha ? ' or Kombucha' : ''}`}
+                            {drinkPackage === 'premium' && `Premium Espresso${kombucha ? ' or Kombucha' : ''}`}
                             {drinkPackage === 'kombucha' && 'Kombucha Bar'}
                             {drinkPackage === 'hotchoc' && 'Hot Chocolate Bar'}
-                            {' '}({numberOfDrinks} drinks)
+                            {' '}({numberOfDrinks} drinks total)
                           </span>
                           <span>
                             ${(numberOfDrinks * (
@@ -922,17 +959,11 @@ export default function BookingInquiryForm() {
                         </div>
                       )}
 
-                      {kombucha && kombuchaQuantity > 0 && (
-                        <>
-                          <div className="flex justify-between">
-                            <span>Kombucha setup fee</span>
-                            <span>$35.00</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Kombucha drinks ({kombuchaQuantity})</span>
-                            <span>${(kombuchaQuantity * 6).toFixed(2)}</span>
-                          </div>
-                        </>
+                      {kombucha && (
+                        <div className="flex justify-between">
+                          <span>Kombucha add-on</span>
+                          <span>$35.00</span>
+                        </div>
                       )}
 
                       <div className="border-t border-black/20 pt-2 mt-2">
@@ -1080,21 +1111,69 @@ export default function BookingInquiryForm() {
           )}
 
             {/* Submit Button */}
-            <div className="border-t border-black/10 pt-8">
+            <div className="border-t border-black/10 pt-6 sm:pt-8">
               <button
                 type="submit"
                 disabled={eventCategory === 'private' && paymentMethod !== 'guestpay' && (!agreedToTerms || !signature)}
-                className="w-full bg-black text-white py-4 px-6 text-lg font-medium hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="w-full bg-black text-white py-4 px-6 text-base sm:text-lg font-medium hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed rounded-lg touch-manipulation"
               >
                 Submit Inquiry
               </button>
-              <p className="text-center text-sm text-gray-600 mt-4">
+              <p className="text-center text-xs sm:text-sm text-gray-600 mt-4">
                 We'll review your inquiry and send you an invoice via Square within 24 hours
               </p>
             </div>
           </form>
         </div>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 sm:p-8 text-center animate-fadeIn max-h-[90vh] overflow-y-auto">
+            {/* Coffee Image */}
+            <div className="mb-4 sm:mb-6">
+              <div className="text-6xl sm:text-8xl mb-3 sm:mb-4">☕</div>
+              <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto bg-gradient-to-br from-amber-600 to-amber-800 rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-4xl sm:text-5xl">🎉</span>
+              </div>
+            </div>
+
+            {/* Message */}
+            <h2 className="text-2xl sm:text-3xl font-serif text-black mb-3 sm:mb-4">
+              We are brewing up something special for you!
+            </h2>
+
+            <p className="text-base sm:text-lg text-gray-700 mb-4 sm:mb-6">
+              We will contact you shortly at:
+            </p>
+
+            <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+              <p className="font-semibold text-amber-900 text-sm sm:text-base break-all">
+                📞 {phone}
+              </p>
+              <p className="font-semibold text-amber-900 mt-2 text-sm sm:text-base break-all">
+                ✉️ {email}
+              </p>
+            </div>
+
+            <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
+              Check your inbox! We're sending you a detailed proposal with all our contact information.
+            </p>
+
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                setShowSuccessModal(false)
+                window.location.href = '/customer'
+              }}
+              className="w-full bg-black text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-800 transition-colors touch-manipulation"
+            >
+              Return to Home
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }
