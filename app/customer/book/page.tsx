@@ -44,6 +44,10 @@ export default function BookingInquiryForm() {
   const [contactName, setContactName] = useState('')
   const [contactPhone, setContactPhone] = useState('')
 
+  // Additional Details
+  const [additionalDetails, setAdditionalDetails] = useState('')
+  const [howHeardAboutUs, setHowHeardAboutUs] = useState('')
+
   // Service Selection (Private Events Only)
   const [extraHours, setExtraHours] = useState(0)
   const [drinkPackage, setDrinkPackage] = useState<'drip' | 'standard' | 'premium' | 'kombucha' | 'hotchoc' | ''>('')
@@ -198,12 +202,26 @@ export default function BookingInquiryForm() {
           eventDate,
           eventAddress,
           eventType: eventType === 'Other' ? customEventType : eventType,
+          eventCategory,
+          estimatedPeople,
+          eventStartTime,
+          powerAvailable,
+          distanceFromPower,
+          indoorOutdoor,
+          sinkAvailable,
+          trashOnSite,
+          contactName,
+          contactPhone,
           drinkPackage,
           numberOfDrinks,
           extraHours,
+          paymentMethod,
+          drinkLimit,
           totalEstimate: calculateTotal(),
           kombucha,
           hotChocolate,
+          additionalDetails,
+          howHeardAboutUs,
         }),
       })
 
@@ -1109,6 +1127,51 @@ export default function BookingInquiryForm() {
             </div>
           </div>
           )}
+
+          {/* Additional Details Section */}
+          <div className="border-t border-black/10 pt-6 sm:pt-8">
+            <h2 className="text-xl sm:text-2xl font-serif text-black mb-4 sm:mb-6">Additional Details</h2>
+
+            <div className="space-y-6">
+              {/* How did you hear about us */}
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  How did you hear about us?
+                </label>
+                <select
+                  value={howHeardAboutUs}
+                  onChange={(e) => setHowHeardAboutUs(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 focus:border-black focus:ring-1 focus:ring-black rounded-lg"
+                >
+                  <option value="">Select an option...</option>
+                  <option value="Instagram">Instagram</option>
+                  <option value="Facebook">Facebook</option>
+                  <option value="Google Search">Google Search</option>
+                  <option value="Friend/Family Referral">Friend/Family Referral</option>
+                  <option value="Saw at an Event">Saw at an Event</option>
+                  <option value="QR Code">QR Code</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              {/* Any other details */}
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  Any other details or special requests?
+                </label>
+                <textarea
+                  value={additionalDetails}
+                  onChange={(e) => setAdditionalDetails(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 focus:border-black focus:ring-1 focus:ring-black rounded-lg"
+                  rows={4}
+                  placeholder="Let us know about any special requests, dietary restrictions, or other details we should know..."
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Optional - share any additional information that will help us serve you better
+                </p>
+              </div>
+            </div>
+          </div>
 
             {/* Submit Button */}
             <div className="border-t border-black/10 pt-6 sm:pt-8">

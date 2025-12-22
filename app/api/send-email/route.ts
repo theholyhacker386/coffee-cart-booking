@@ -23,12 +23,26 @@ export async function POST(request: NextRequest) {
       eventDate,
       eventAddress,
       eventType,
+      eventCategory,
+      estimatedPeople,
+      eventStartTime,
+      powerAvailable,
+      distanceFromPower,
+      indoorOutdoor,
+      sinkAvailable,
+      trashOnSite,
+      contactName,
+      contactPhone,
       drinkPackage,
       numberOfDrinks,
       extraHours,
+      paymentMethod,
+      drinkLimit,
       totalEstimate,
       kombucha,
       hotChocolate,
+      additionalDetails,
+      howHeardAboutUs,
     } = body
 
     // Format drink package name
@@ -137,6 +151,8 @@ export async function POST(request: NextRequest) {
 
     <div class="section">
       <h3>📅 EVENT DETAILS</h3>
+      <p><strong>Event Category:</strong> ${eventCategory === 'private' ? 'Private Event' : 'Public Event'}</p>
+      ${estimatedPeople ? `<p><strong>Estimated People:</strong> ${estimatedPeople}</p>` : ''}
       <p><strong>Event Type:</strong> ${eventType}</p>
       <p><strong>Date:</strong> ${new Date(eventDate).toLocaleDateString('en-US', {
         weekday: 'long',
@@ -144,9 +160,30 @@ export async function POST(request: NextRequest) {
         month: 'long',
         day: 'numeric',
       })}</p>
+      ${eventStartTime ? `<p><strong>Start Time:</strong> ${eventStartTime}</p>` : ''}
       <p><strong>Location:</strong> ${eventAddress}</p>
+      ${indoorOutdoor ? `<p><strong>Setup:</strong> ${indoorOutdoor === 'indoor' ? 'Indoor' : 'Outdoor'}</p>` : ''}
     </div>
 
+    ${eventCategory === 'private' ? `
+    <div class="section">
+      <h3>⚡ SETUP REQUIREMENTS</h3>
+      ${powerAvailable ? `<p><strong>Power Available:</strong> ${powerAvailable === 'yes' ? 'Yes' : 'No'}</p>` : ''}
+      ${distanceFromPower ? `<p><strong>Distance from Power:</strong> ${distanceFromPower}</p>` : ''}
+      ${sinkAvailable ? `<p><strong>Sink Available:</strong> ${sinkAvailable === 'yes' ? 'Yes' : 'No'}</p>` : ''}
+      ${trashOnSite ? `<p><strong>Trash on Site:</strong> ${trashOnSite === 'yes' ? 'Yes' : 'No'}</p>` : ''}
+    </div>
+
+    ${contactName || contactPhone ? `
+    <div class="section">
+      <h3>👤 DAY-OF EVENT CONTACT</h3>
+      ${contactName ? `<p><strong>Name:</strong> ${contactName}</p>` : ''}
+      ${contactPhone ? `<p><strong>Phone:</strong> <a href="tel:${contactPhone}">${contactPhone}</a></p>` : ''}
+    </div>
+    ` : ''}
+    ` : ''}
+
+    ${eventCategory === 'private' && drinkPackage ? `
     <div class="section">
       <h3>☕ SERVICE DETAILS</h3>
       <p><strong>Package:</strong> ${packageName}</p>
@@ -154,11 +191,36 @@ export async function POST(request: NextRequest) {
       <p><strong>Service Duration:</strong> ${totalHours} hours</p>
       ${hotChocolate ? '<p><strong>Add-on:</strong> Hot Chocolate</p>' : ''}
       ${kombucha ? '<p><strong>Add-on:</strong> Kombucha ($35)</p>' : ''}
+      ${paymentMethod ? `<p><strong>Payment Method:</strong> ${
+        paymentMethod === 'openbar' ? 'Open Bar (Host Pays)' :
+        paymentMethod === 'ticket' ? 'Ticket System' :
+        'Guests Pay Per Drink'
+      }</p>` : ''}
+      ${drinkLimit && paymentMethod === 'openbar' ? `<p><strong>Drink Limit Reached:</strong> ${
+        drinkLimit === 'stop' ? 'Stop Service' : 'Contact Host for Approval'
+      }</p>` : ''}
     </div>
+    ` : ''}
 
+    ${eventCategory === 'private' && totalEstimate ? `
     <div class="highlight">
       <h3>💰 ESTIMATED TOTAL: $${totalEstimate.toFixed(2)}</h3>
     </div>
+    ` : ''}
+
+    ${howHeardAboutUs ? `
+    <div class="section">
+      <h3>📢 HOW THEY HEARD ABOUT US</h3>
+      <p>${howHeardAboutUs}</p>
+    </div>
+    ` : ''}
+
+    ${additionalDetails ? `
+    <div class="section">
+      <h3>📝 ADDITIONAL DETAILS</h3>
+      <p>${additionalDetails}</p>
+    </div>
+    ` : ''}
 
     <p><strong>⏰ Next Steps:</strong> Contact the customer within 24 hours and send Square invoice.</p>
   </div>
