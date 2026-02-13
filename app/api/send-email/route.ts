@@ -187,14 +187,14 @@ export async function POST(request: NextRequest) {
     <div class="section">
       <h3>☕ SERVICE DETAILS</h3>
       <p><strong>Package:</strong> ${packageName}</p>
-      <p><strong>Number of Drinks:</strong> ${numberOfDrinks}</p>
+      <p><strong>${paymentMethod === 'guestpay' ? 'Minimum Drink Guarantee' : 'Number of Drinks'}:</strong> ${numberOfDrinks}${paymentMethod === 'guestpay' ? ' (guests buy their own — host covers shortfall)' : ''}</p>
       <p><strong>Service Duration:</strong> ${totalHours} hours</p>
       ${hotChocolate ? '<p><strong>Add-on:</strong> Hot Chocolate</p>' : ''}
       ${kombucha ? '<p><strong>Add-on:</strong> Kombucha ($35)</p>' : ''}
       ${paymentMethod ? `<p><strong>Payment Method:</strong> ${
         paymentMethod === 'openbar' ? 'Open Bar (Host Pays)' :
         paymentMethod === 'ticket' ? 'Ticket System' :
-        'Guests Pay Per Drink'
+        'Guest Pay (50-Drink Minimum Guarantee)'
       }</p>` : ''}
       ${drinkLimit && paymentMethod === 'openbar' ? `<p><strong>Drink Limit Reached:</strong> ${
         drinkLimit === 'stop' ? 'Stop Service' : 'Contact Host for Approval'
@@ -204,7 +204,8 @@ export async function POST(request: NextRequest) {
 
     ${eventCategory === 'private' && totalEstimate ? `
     <div class="highlight">
-      <h3>💰 ESTIMATED TOTAL: $${totalEstimate.toFixed(2)}</h3>
+      <h3>💰 ${paymentMethod === 'guestpay' ? 'MINIMUM GUARANTEE' : 'ESTIMATED TOTAL'}: $${totalEstimate.toFixed(2)}</h3>
+      ${paymentMethod === 'guestpay' ? '<p style="margin-top: 8px; font-size: 14px; color: #795548;">Card held on file. Guests pay per drink — host only charged if sales fall short of 50-drink minimum.</p>' : ''}
     </div>
     ` : ''}
 
@@ -343,18 +344,22 @@ export async function POST(request: NextRequest) {
     <h3>Service Details</h3>
     <div class="detail-row">
       <strong>Package:</strong> ${packageName}<br>
-      <strong>Number of Drinks:</strong> ${numberOfDrinks} drinks<br>
+      <strong>${paymentMethod === 'guestpay' ? 'Minimum Drink Guarantee' : 'Number of Drinks'}:</strong> ${numberOfDrinks} drinks${paymentMethod === 'guestpay' ? ' (minimum)' : ''}<br>
       <strong>Service Duration:</strong> ${totalHours} hours
       ${hotChocolate ? '<br><strong>Add-on:</strong> Hot Chocolate' : ''}
       ${kombucha ? '<br><strong>Add-on:</strong> Kombucha ($35)' : ''}
     </div>
 
     <div class="estimate">
-      <h2>Estimated Total</h2>
-      <p>Based on your selections, here's your estimated investment:</p>
+      <h2>${paymentMethod === 'guestpay' ? 'Minimum Guarantee' : 'Estimated Total'}</h2>
+      <p>${paymentMethod === 'guestpay'
+        ? 'Your guests will purchase their own drinks at the event. This is the maximum you could be charged if the drink minimum is not met:'
+        : "Based on your selections, here's your estimated investment:"}</p>
       <div class="total">$${totalEstimate.toFixed(2)}</div>
       <p style="font-size: 12px; color: #666; margin-top: 15px;">
-        * This is an estimate. Final pricing will be confirmed in your invoice.
+        ${paymentMethod === 'guestpay'
+          ? '* Card held on file. If guests purchase 50+ drinks, you pay nothing! Only the shortfall is charged.'
+          : '* This is an estimate. Final pricing will be confirmed in your invoice.'}
       </p>
     </div>
 

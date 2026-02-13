@@ -15,6 +15,9 @@ declare global {
 }
 
 export default function BookingInquiryForm() {
+  // Minimum number of drinks for Guest Pay guarantee
+  const MINIMUM_GUEST_PAY_DRINKS = 50
+
   // Google Maps autocomplete reference
   const addressInputRef = useRef<HTMLInputElement>(null)
   // Event Type
@@ -152,6 +155,12 @@ export default function BookingInquiryForm() {
   const calculateTotal = () => {
     if (eventCategory === 'public') return 0
 
+    // Guest Pay: minimum guarantee based on 50 drinks at package price
+    if (paymentMethod === 'guestpay') {
+      const pricePerDrink = drinkPackage === 'drip' ? 5 : drinkPackage === 'standard' ? 6 : drinkPackage === 'premium' ? 7 : drinkPackage === 'kombucha' ? 6 : drinkPackage === 'hotchoc' ? 5 : 0
+      return MINIMUM_GUEST_PAY_DRINKS * pricePerDrink
+    }
+
     let total = 0
 
     if (pricing.tier === 4) {
@@ -213,8 +222,8 @@ export default function BookingInquiryForm() {
           contactName,
           contactPhone,
           drinkPackage,
-          numberOfDrinks,
-          extraHours,
+          numberOfDrinks: paymentMethod === 'guestpay' ? MINIMUM_GUEST_PAY_DRINKS : numberOfDrinks,
+          extraHours: paymentMethod === 'guestpay' ? 0 : extraHours,
           paymentMethod,
           drinkLimit,
           totalEstimate: calculateTotal(),
@@ -441,13 +450,47 @@ export default function BookingInquiryForm() {
                 <label className="block text-sm font-medium text-black mb-2">
                   Event Start Time *
                 </label>
-                <input
-                  type="time"
+                <select
                   value={eventStartTime}
                   onChange={(e) => setEventStartTime(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 focus:border-black focus:ring-1 focus:ring-black"
                   required
-                />
+                >
+                  <option value="">Select a time...</option>
+                  <option value="6:00 AM">6:00 AM</option>
+                  <option value="6:30 AM">6:30 AM</option>
+                  <option value="7:00 AM">7:00 AM</option>
+                  <option value="7:30 AM">7:30 AM</option>
+                  <option value="8:00 AM">8:00 AM</option>
+                  <option value="8:30 AM">8:30 AM</option>
+                  <option value="9:00 AM">9:00 AM</option>
+                  <option value="9:30 AM">9:30 AM</option>
+                  <option value="10:00 AM">10:00 AM</option>
+                  <option value="10:30 AM">10:30 AM</option>
+                  <option value="11:00 AM">11:00 AM</option>
+                  <option value="11:30 AM">11:30 AM</option>
+                  <option value="12:00 PM">12:00 PM</option>
+                  <option value="12:30 PM">12:30 PM</option>
+                  <option value="1:00 PM">1:00 PM</option>
+                  <option value="1:30 PM">1:30 PM</option>
+                  <option value="2:00 PM">2:00 PM</option>
+                  <option value="2:30 PM">2:30 PM</option>
+                  <option value="3:00 PM">3:00 PM</option>
+                  <option value="3:30 PM">3:30 PM</option>
+                  <option value="4:00 PM">4:00 PM</option>
+                  <option value="4:30 PM">4:30 PM</option>
+                  <option value="5:00 PM">5:00 PM</option>
+                  <option value="5:30 PM">5:30 PM</option>
+                  <option value="6:00 PM">6:00 PM</option>
+                  <option value="6:30 PM">6:30 PM</option>
+                  <option value="7:00 PM">7:00 PM</option>
+                  <option value="7:30 PM">7:30 PM</option>
+                  <option value="8:00 PM">8:00 PM</option>
+                  <option value="8:30 PM">8:30 PM</option>
+                  <option value="9:00 PM">9:00 PM</option>
+                  <option value="9:30 PM">9:30 PM</option>
+                  <option value="10:00 PM">10:00 PM</option>
+                </select>
               </div>
 
               <div>
@@ -623,10 +666,10 @@ export default function BookingInquiryForm() {
                   </div>
                 </div>
 
-                {/* Guest Pay - Show estimated people only */}
+                {/* Guest Pay - Show estimated people + guarantee info */}
                 {paymentMethod === 'guestpay' && (
                   <div className="border-t border-black/10 pt-8">
-                    <div className="mt-8">
+                    <div>
                       <label className="block text-sm font-medium text-black mb-2">
                         Estimated Number of People Attending *
                       </label>
@@ -639,16 +682,24 @@ export default function BookingInquiryForm() {
                         required
                       />
                     </div>
+                    <div className="mt-6 bg-amber-50 border-2 border-amber-300 rounded-lg p-4 sm:p-6">
+                      <h3 className="text-lg font-medium text-amber-900 mb-2">
+                        {MINIMUM_GUEST_PAY_DRINKS}-Drink Minimum Guarantee
+                      </h3>
+                      <p className="text-amber-800 text-sm sm:text-base">
+                        With Guest Pay, your guests purchase their own drinks at the event. To cover our setup and travel costs, we require a <strong>minimum guarantee of {MINIMUM_GUEST_PAY_DRINKS} drinks</strong>. We&apos;ll hold your card on file &mdash; if guest purchases don&apos;t reach {MINIMUM_GUEST_PAY_DRINKS} drinks, we&apos;ll only charge you for the difference.
+                      </p>
+                    </div>
                   </div>
                 )}
 
-                {/* Open Bar or Ticket System - Show full package options */}
-                {(paymentMethod === 'openbar' || paymentMethod === 'ticket') && (
+                {/* Package Selection - Show for all payment methods */}
+                {(paymentMethod === 'openbar' || paymentMethod === 'ticket' || paymentMethod === 'guestpay') && (
                   <>
                 {/* Drink Package */}
                 <div className="mb-8">
                   <label className="block text-sm font-medium text-black mb-4">
-                    Select Drink Package and Number of Drinks to Serve *
+                    {paymentMethod === 'guestpay' ? 'Select Drink Package *' : 'Select Drink Package and Number of Drinks to Serve *'}
                   </label>
                   <div className="space-y-4">
                     <label className="block border-2 border-gray-300 p-4 cursor-pointer hover:border-black transition-colors">
@@ -750,7 +801,8 @@ export default function BookingInquiryForm() {
                   </div>
                 </div>
 
-                {/* Number of Drinks */}
+                {/* Number of Drinks, Drink Limit, Add-ons - only for Open Bar / Ticket */}
+                {(paymentMethod === 'openbar' || paymentMethod === 'ticket') && (<>
                 <div className="mb-8">
                   <label className="block text-sm font-medium text-black mb-2">
                     Number of Drinks (Minimum 25) *
@@ -908,12 +960,45 @@ export default function BookingInquiryForm() {
                     )}
                   </div>
                 )}
+                </>)}
 
                 {/* Price Estimate - Only show when package is selected */}
                 {drinkPackage && (
                 <div className="border-t border-black/10 pt-8">
                   <div className="bg-black/5 p-6">
-                    <h3 className="text-2xl font-serif text-black mb-4">Estimated Cost</h3>
+                    <h3 className="text-2xl font-serif text-black mb-4">{paymentMethod === 'guestpay' ? 'Minimum Guarantee' : 'Estimated Cost'}</h3>
+                    {paymentMethod === 'guestpay' ? (
+                      <div className="space-y-2 text-gray-700">
+                        <div className="flex justify-between">
+                          <span>
+                            {drinkPackage === 'drip' && 'Drip Coffee'}
+                            {drinkPackage === 'standard' && 'Standard Espresso'}
+                            {drinkPackage === 'premium' && 'Premium Espresso'}
+                            {drinkPackage === 'kombucha' && 'Kombucha Bar'}
+                            {drinkPackage === 'hotchoc' && 'Hot Chocolate Bar'}
+                            {' '}({MINIMUM_GUEST_PAY_DRINKS} drink minimum)
+                          </span>
+                          <span>
+                            {MINIMUM_GUEST_PAY_DRINKS} &times; ${(
+                              drinkPackage === 'drip' ? 5 :
+                              drinkPackage === 'standard' ? 6 :
+                              drinkPackage === 'premium' ? 7 :
+                              drinkPackage === 'kombucha' ? 6 :
+                              drinkPackage === 'hotchoc' ? 5 : 0
+                            ).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="border-t border-black/20 pt-2 mt-2">
+                          <div className="flex justify-between text-xl font-bold text-black">
+                            <span>Maximum Guarantee</span>
+                            <span>${totalEstimate.toFixed(2)}</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-green-700 mt-3">
+                          If your guests purchase {MINIMUM_GUEST_PAY_DRINKS}+ drinks, you pay nothing! We only charge the shortfall.
+                        </p>
+                      </div>
+                    ) : (
                     <div className="space-y-2 text-gray-700">
                       {pricing.tier === 4 ? (
                         <>
@@ -991,9 +1076,12 @@ export default function BookingInquiryForm() {
                         </div>
                       </div>
                     </div>
+                    )}
 
                     <p className="text-sm text-gray-600 mt-4">
-                      This is an estimate. Final pricing will be confirmed in your invoice.
+                      {paymentMethod === 'guestpay'
+                        ? 'Card held on file. Only charged if guest purchases fall short of the minimum.'
+                        : 'This is an estimate. Final pricing will be confirmed in your invoice.'}
                     </p>
                   </div>
                 </div>
@@ -1018,8 +1106,8 @@ export default function BookingInquiryForm() {
             </div>
           )}
 
-          {/* Service Agreement - Only show for Private events with Open Bar or Ticket System */}
-          {eventCategory === 'private' && paymentMethod !== 'guestpay' && (
+          {/* Service Agreement */}
+          {eventCategory === 'private' && paymentMethod && (
           <div className="border-t border-black/10 pt-8">
             <h2 className="text-2xl font-serif text-black mb-6">Service Agreement</h2>
 
@@ -1177,7 +1265,7 @@ export default function BookingInquiryForm() {
             <div className="border-t border-black/10 pt-6 sm:pt-8">
               <button
                 type="submit"
-                disabled={eventCategory === 'private' && paymentMethod !== 'guestpay' && (!agreedToTerms || !signature)}
+                disabled={eventCategory === 'private' && paymentMethod !== '' && (!agreedToTerms || !signature)}
                 className="w-full bg-black text-white py-4 px-6 text-base sm:text-lg font-medium hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed rounded-lg touch-manipulation"
               >
                 Submit Inquiry
