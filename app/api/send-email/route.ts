@@ -341,6 +341,7 @@ export async function POST(request: NextRequest) {
       <strong>Location:</strong> ${eventAddress}
     </div>
 
+    ${eventCategory === 'private' ? `
     <h3>Service Details</h3>
     <div class="detail-row">
       <strong>Package:</strong> ${packageName}<br>
@@ -362,6 +363,13 @@ export async function POST(request: NextRequest) {
           : '* This is an estimate. Final pricing will be confirmed in your invoice.'}
       </p>
     </div>
+    ` : `
+    <div class="estimate" style="background: #E3F2FD; border-color: #1976D2;">
+      <h2 style="color: #1565C0;">Public Event Inquiry</h2>
+      <p>Thank you for reaching out! We'll review your event details and contact you within 24 hours to discuss service options and pricing for your event.</p>
+      ${estimatedPeople ? '<p><strong>Estimated Attendance:</strong> ' + estimatedPeople + ' people</p>' : ''}
+    </div>
+    `}
 
     <div class="contact">
       <h3>Next Steps</h3>
@@ -370,9 +378,8 @@ export async function POST(request: NextRequest) {
         If you have any questions in the meantime, feel free to reach out!
       </p>
       <p>
-        <strong>📞 Phone:</strong> [YOUR PHONE NUMBER]<br>
-        <strong>✉️ Email:</strong> [YOUR EMAIL]<br>
-        <strong>🌐 Website:</strong> [YOUR WEBSITE]
+        <strong>📞 Phone:</strong> <a href="tel:3868826560">386-882-6560</a><br>
+        <strong>✉️ Email:</strong> <a href="mailto:theporchkombuchabar@gmail.com">Theporchkombuchabar@gmail.com</a>
       </p>
     </div>
 
@@ -398,7 +405,7 @@ export async function POST(request: NextRequest) {
       const customerEmailResult = await resend.emails.send({
         from: 'The Porch Coffee Cart <onboarding@resend.dev>',
         to: [email],
-        subject: `Your Coffee Cart Event Proposal - ${new Date(eventDate).toLocaleDateString()}`,
+        subject: `${eventCategory === 'private' ? 'Your Coffee Cart Event Proposal' : 'Your Coffee Cart Inquiry'} - ${new Date(eventDate).toLocaleDateString()}`,
         html: emailHtml,
       })
       console.log('Customer email sent successfully:', customerEmailResult)
