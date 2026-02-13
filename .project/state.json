@@ -1,0 +1,26 @@
+{
+  "project": "coffee-cart-booking",
+  "current_phase": "live",
+  "completed_tasks": [
+    "Add Guest Pay 50-drink minimum guarantee flow",
+    "Show package selection for all private event payment methods",
+    "Update Jennifer + customer emails with full details for all flows",
+    "Fix time picker invalid value bug (replaced with dropdown)",
+    "Deploy to Netlify production"
+  ],
+  "pending_tasks": [
+    "Public event customer email shows incorrect package/pricing data",
+    "Save inquiries to Supabase (TODO in code)",
+    "Update customer email contact info placeholders ([YOUR PHONE], [YOUR EMAIL], [YOUR WEBSITE])"
+  ],
+  "next_actions": {
+    "ai_tasks": [
+      "Fix public event customer email to not show package/pricing sections",
+      "Implement Supabase inquiry storage",
+      "Fill in contact info in customer confirmation email"
+    ],
+    "human_tasks": [],
+    "blocked_on": []
+  },
+  "last_updated": "2026-02-13 13:54:33 EST"
+}
