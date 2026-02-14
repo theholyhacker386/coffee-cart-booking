@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import twilio from 'twilio'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { generateChecklist } from '@/lib/checklist-generator'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -23,6 +25,7 @@ export async function POST(request: NextRequest) {
       eventDate,
       eventAddress,
       eventType,
+      customEventType,
       eventCategory,
       estimatedPeople,
       eventStartTime,
@@ -43,6 +46,10 @@ export async function POST(request: NextRequest) {
       hotChocolate,
       additionalDetails,
       howHeardAboutUs,
+      travelDistanceMiles,
+      travelDriveMinutes,
+      travelFee,
+      signature,
     } = body
 
     // Format drink package name
@@ -202,10 +209,19 @@ export async function POST(request: NextRequest) {
     </div>
     ` : ''}
 
-    ${eventCategory === 'private' && totalEstimate ? `
+    ${travelFee > 0 ? `
+    <div class="section">
+      <h3>🚗 TRAVEL FEE</h3>
+      <p><strong>Distance:</strong> ${travelDistanceMiles} miles (~${travelDriveMinutes} min drive)</p>
+      <p><strong>Travel Fee:</strong> $${travelFee.toFixed(2)}</p>
+    </div>
+    ` : ''}
+
+    ${totalEstimate ? `
     <div class="highlight">
-      <h3>💰 ${paymentMethod === 'guestpay' ? 'MINIMUM GUARANTEE' : 'ESTIMATED TOTAL'}: $${totalEstimate.toFixed(2)}</h3>
+      <h3>💰 ${eventCategory === 'public' ? 'TRAVEL FEE' : paymentMethod === 'guestpay' ? 'MINIMUM GUARANTEE' : 'ESTIMATED TOTAL'}: $${totalEstimate.toFixed(2)}</h3>
       ${paymentMethod === 'guestpay' ? '<p style="margin-top: 8px; font-size: 14px; color: #795548;">Card held on file. Guests pay per drink — host only charged if sales fall short of 50-drink minimum.</p>' : ''}
+      ${eventCategory === 'public' && travelFee > 0 ? '<p style="margin-top: 8px; font-size: 14px; color: #795548;">Travel fee for this public event. Service pricing will be discussed separately.</p>' : ''}
     </div>
     ` : ''}
 
@@ -342,6 +358,13 @@ export async function POST(request: NextRequest) {
     </div>
 
     ${eventCategory === 'private' ? `
+    ${travelFee > 0 ? `
+    <div class="detail-row">
+      <strong>Travel:</strong> ${travelDistanceMiles} miles away (~${travelDriveMinutes} min drive)<br>
+      <strong>Travel Fee:</strong> $${travelFee.toFixed(2)}
+    </div>
+    ` : ''}
+
     <h3>Service Details</h3>
     <div class="detail-row">
       <strong>Package:</strong> ${packageName}<br>
@@ -361,13 +384,21 @@ export async function POST(request: NextRequest) {
         ${paymentMethod === 'guestpay'
           ? '* Card held on file. If guests purchase 50+ drinks, you pay nothing! Only the shortfall is charged.'
           : '* This is an estimate. Final pricing will be confirmed in your invoice.'}
+        ${travelFee > 0 ? ' Includes travel fee.' : ''}
       </p>
     </div>
     ` : `
+    <div class="detail-row">
+      <strong>Event Type:</strong> Public Event<br>
+      ${estimatedPeople ? '<strong>Estimated Attendance:</strong> ' + estimatedPeople + ' people<br>' : ''}
+      ${eventStartTime ? '<strong>Start Time:</strong> ' + eventStartTime + '<br>' : ''}
+      ${indoorOutdoor ? '<strong>Setup:</strong> ' + (indoorOutdoor === 'indoor' ? 'Indoor' : 'Outdoor') + '<br>' : ''}
+    </div>
+
     <div class="estimate" style="background: #E3F2FD; border-color: #1976D2;">
-      <h2 style="color: #1565C0;">Public Event Inquiry</h2>
+      <h2 style="color: #1565C0;">Public Event Inquiry Received</h2>
       <p>Thank you for reaching out! We'll review your event details and contact you within 24 hours to discuss service options and pricing for your event.</p>
-      ${estimatedPeople ? '<p><strong>Estimated Attendance:</strong> ' + estimatedPeople + ' people</p>' : ''}
+      ${travelFee > 0 ? '<p><strong>Estimated Travel Fee:</strong> $' + travelFee.toFixed(2) + '</p>' : ''}
     </div>
     `}
 
@@ -411,6 +442,110 @@ export async function POST(request: NextRequest) {
       console.log('Customer email sent successfully:', customerEmailResult)
     } catch (customerEmailError) {
       console.error('Error sending customer email:', customerEmailError)
+    }
+
+    // ── Save booking to Supabase and generate checklist ──
+    // This happens AFTER emails/SMS so it never blocks the notification flow.
+    // If the database save fails, we still return success (emails already went out).
+    try {
+      const supabase = createServiceRoleClient()
+
+      // Insert the booking into cc_bookings
+      const { data: insertedBooking, error: bookingError } = await supabase
+        .from('cc_bookings')
+        .insert({
+          customer_name: customerName,
+          email,
+          phone,
+          event_date: eventDate,
+          event_start_time: eventStartTime,
+          event_address: eventAddress,
+          event_type: eventType,
+          custom_event_type: customEventType || null,
+          event_category: eventCategory,
+          indoor_outdoor: indoorOutdoor || null,
+          power_available: powerAvailable || null,
+          distance_from_power: distanceFromPower || null,
+          sink_available: sinkAvailable || null,
+          trash_on_site: trashOnSite || null,
+          contact_name: contactName || null,
+          contact_phone: contactPhone || null,
+          payment_method: paymentMethod || null,
+          drink_package: drinkPackage || null,
+          number_of_drinks: numberOfDrinks || null,
+          drink_limit: drinkLimit || null,
+          extra_hours: extraHours || 0,
+          hot_chocolate_addon: hotChocolate || false,
+          kombucha_addon: kombucha || false,
+          travel_distance_miles: travelDistanceMiles || null,
+          travel_drive_minutes: travelDriveMinutes || null,
+          travel_fee: travelFee || 0,
+          total_estimate: totalEstimate || null,
+          estimated_people: estimatedPeople || null,
+          how_heard_about_us: howHeardAboutUs || null,
+          additional_details: additionalDetails || null,
+          signature: signature || null,
+        })
+        .select('id')
+        .single()
+
+      if (bookingError) {
+        console.error('Error saving booking to Supabase:', bookingError)
+      } else if (insertedBooking) {
+        console.log('Booking saved to Supabase:', insertedBooking.id)
+
+        // Generate checklist items for this booking
+        const checklistItems = generateChecklist({
+          customer_name: customerName,
+          event_date: eventDate,
+          event_start_time: eventStartTime,
+          event_address: eventAddress,
+          event_type: eventType,
+          custom_event_type: customEventType,
+          event_category: eventCategory,
+          indoor_outdoor: indoorOutdoor,
+          power_available: powerAvailable,
+          distance_from_power: distanceFromPower,
+          sink_available: sinkAvailable,
+          trash_on_site: trashOnSite,
+          contact_name: contactName,
+          contact_phone: contactPhone,
+          payment_method: paymentMethod,
+          drink_package: drinkPackage,
+          number_of_drinks: numberOfDrinks,
+          drink_limit: drinkLimit,
+          extra_hours: extraHours,
+          hot_chocolate_addon: hotChocolate,
+          kombucha_addon: kombucha,
+          travel_distance_miles: travelDistanceMiles,
+          travel_drive_minutes: travelDriveMinutes,
+          travel_fee: travelFee,
+          total_estimate: totalEstimate,
+          estimated_people: estimatedPeople,
+          additional_details: additionalDetails,
+        })
+
+        // Insert all checklist items with the booking_id
+        const itemsToInsert = checklistItems.map((item) => ({
+          booking_id: insertedBooking.id,
+          item_text: item.item_text,
+          category: item.category,
+          phase: item.phase,
+          sort_order: item.sort_order,
+        }))
+
+        const { error: checklistError } = await supabase
+          .from('cc_checklist_items')
+          .insert(itemsToInsert)
+
+        if (checklistError) {
+          console.error('Error saving checklist items to Supabase:', checklistError)
+        } else {
+          console.log(`Saved ${itemsToInsert.length} checklist items for booking ${insertedBooking.id}`)
+        }
+      }
+    } catch (dbError) {
+      console.error('Error during Supabase save (emails already sent successfully):', dbError)
     }
 
     return NextResponse.json({ success: true })

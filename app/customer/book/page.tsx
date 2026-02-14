@@ -63,6 +63,12 @@ export default function BookingInquiryForm() {
   const [kombucha, setKombucha] = useState(false)
   const [kombuchaQuantity, setKombuchaQuantity] = useState(0)
 
+  // Travel / Drive Time
+  const [travelDistanceMiles, setTravelDistanceMiles] = useState<number | null>(null)
+  const [travelDriveMinutes, setTravelDriveMinutes] = useState<number | null>(null)
+  const [travelFee, setTravelFee] = useState(0)
+  const [travelCalculating, setTravelCalculating] = useState(false)
+
   // Agreement
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [signature, setSignature] = useState('')
@@ -71,6 +77,66 @@ export default function BookingInquiryForm() {
   // Success modal
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false)
+
+  // Home base address for travel calculations
+  const HOME_BASE = '212 S Beach Street, Daytona Beach, FL'
+  const FREE_MILES_INCLUDED = 10 // 10 free miles deducted from round trip
+  const LABOR_RATE_PER_HOUR = 37.50 // 2 employees x $15/hr + 25% markup
+  const MILEAGE_RATE = 0.725 // IRS standard 2026
+
+  // Calculate travel fee from distance and drive time
+  const calculateTravelFee = (oneWayMiles: number, oneWayMinutes: number) => {
+    const roundTripMiles = oneWayMiles * 2
+    const billableMiles = Math.max(0, roundTripMiles - FREE_MILES_INCLUDED)
+
+    if (billableMiles <= 0) {
+      setTravelFee(0)
+      return
+    }
+
+    // Mileage cost on billable miles only
+    const mileageCost = billableMiles * MILEAGE_RATE
+
+    // Labor cost proportional to billable portion of the trip
+    const roundTripMinutes = oneWayMinutes * 2
+    const billableRatio = billableMiles / roundTripMiles
+    const billableHours = (roundTripMinutes * billableRatio) / 60
+    const laborCost = billableHours * LABOR_RATE_PER_HOUR
+
+    setTravelFee(Math.round((laborCost + mileageCost) * 100) / 100)
+  }
+
+  // Use Google Maps Distance Matrix to calculate travel distance/time
+  const calculateDistance = (address: string) => {
+    if (!window.google || !address) return
+    setTravelCalculating(true)
+
+    const service = new window.google.maps.DistanceMatrixService()
+    service.getDistanceMatrix(
+      {
+        origins: [HOME_BASE],
+        destinations: [address],
+        travelMode: window.google.maps.TravelMode.DRIVING,
+        unitSystem: window.google.maps.UnitSystem.IMPERIAL,
+      },
+      (response: any, status: any) => {
+        setTravelCalculating(false)
+        if (status === 'OK' && response.rows[0]?.elements[0]?.status === 'OK') {
+          const element = response.rows[0].elements[0]
+          const miles = element.distance.value / 1609.34 // meters to miles
+          const minutes = element.duration.value / 60 // seconds to minutes
+          setTravelDistanceMiles(Math.round(miles * 10) / 10)
+          setTravelDriveMinutes(Math.round(minutes))
+          calculateTravelFee(miles, minutes)
+        } else {
+          console.error('Distance Matrix error:', status)
+          setTravelDistanceMiles(null)
+          setTravelDriveMinutes(null)
+          setTravelFee(0)
+        }
+      }
+    )
+  }
 
   // Initialize Google Maps Autocomplete
   useEffect(() => {
@@ -85,6 +151,7 @@ export default function BookingInquiryForm() {
           const place = autocomplete.getPlace()
           if (place.formatted_address) {
             setEventAddress(place.formatted_address)
+            calculateDistance(place.formatted_address)
           }
         })
       } catch (error) {
@@ -153,12 +220,12 @@ export default function BookingInquiryForm() {
   const pricing = calculatePricing()
 
   const calculateTotal = () => {
-    if (eventCategory === 'public') return 0
+    if (eventCategory === 'public') return travelFee
 
     // Guest Pay: minimum guarantee based on 50 drinks at package price
     if (paymentMethod === 'guestpay') {
       const pricePerDrink = drinkPackage === 'drip' ? 5 : drinkPackage === 'standard' ? 6 : drinkPackage === 'premium' ? 7 : drinkPackage === 'kombucha' ? 6 : drinkPackage === 'hotchoc' ? 5 : 0
-      return MINIMUM_GUEST_PAY_DRINKS * pricePerDrink
+      return (MINIMUM_GUEST_PAY_DRINKS * pricePerDrink) + travelFee
     }
 
     let total = 0
@@ -191,6 +258,9 @@ export default function BookingInquiryForm() {
       total += 35
     }
 
+    // Add travel fee
+    total += travelFee
+
     return total
   }
 
@@ -211,6 +281,7 @@ export default function BookingInquiryForm() {
           eventDate,
           eventAddress,
           eventType: eventType === 'Other' ? customEventType : eventType,
+          customEventType: eventType === 'Other' ? customEventType : undefined,
           eventCategory,
           estimatedPeople,
           eventStartTime,
@@ -231,6 +302,10 @@ export default function BookingInquiryForm() {
           hotChocolate,
           additionalDetails,
           howHeardAboutUs,
+          travelDistanceMiles,
+          travelDriveMinutes,
+          travelFee,
+          signature,
         }),
       })
 
@@ -438,6 +513,23 @@ export default function BookingInquiryForm() {
                   placeholder="Start typing your address..."
                   required
                 />
+                {/* Travel distance info */}
+                {travelCalculating && (
+                  <p className="text-sm text-gray-500 mt-2">Calculating travel distance...</p>
+                )}
+                {travelDistanceMiles !== null && !travelCalculating && (
+                  <div className={`mt-2 p-3 rounded-lg text-sm ${travelFee > 0 ? 'bg-amber-50 border border-amber-200' : 'bg-green-50 border border-green-200'}`}>
+                    {travelFee > 0 ? (
+                      <p className="text-amber-800">
+                        Your event is <strong>{travelDistanceMiles} miles</strong> away ({(travelDistanceMiles * 2).toFixed(1)} miles round trip). After deducting our included {FREE_MILES_INCLUDED} free miles, a travel fee of <strong>${travelFee.toFixed(2)}</strong> will be added to your estimate.
+                      </p>
+                    ) : (
+                      <p className="text-green-800">
+                        Your event is <strong>{travelDistanceMiles} miles</strong> away — within our free travel zone!
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -988,6 +1080,12 @@ export default function BookingInquiryForm() {
                             ).toFixed(2)}
                           </span>
                         </div>
+                        {travelFee > 0 && (
+                          <div className="flex justify-between">
+                            <span>Travel fee ({travelDistanceMiles} mi, ~{travelDriveMinutes} min)</span>
+                            <span>${travelFee.toFixed(2)}</span>
+                          </div>
+                        )}
                         <div className="border-t border-black/20 pt-2 mt-2">
                           <div className="flex justify-between text-xl font-bold text-black">
                             <span>Maximum Guarantee</span>
@@ -1069,6 +1167,13 @@ export default function BookingInquiryForm() {
                         </div>
                       )}
 
+                      {travelFee > 0 && (
+                        <div className="flex justify-between">
+                          <span>Travel fee ({travelDistanceMiles} mi, ~{travelDriveMinutes} min)</span>
+                          <span>${travelFee.toFixed(2)}</span>
+                        </div>
+                      )}
+
                       <div className="border-t border-black/20 pt-2 mt-2">
                         <div className="flex justify-between text-xl font-bold text-black">
                           <span>Estimated Total</span>
@@ -1100,9 +1205,19 @@ export default function BookingInquiryForm() {
                   Public Event Inquiry
                 </h3>
                 <p className="text-blue-700">
-                  Thank you for your interest! We'll review your event details and contact you within 24 hours to discuss service options and pricing for your public event.
+                  Thank you for your interest! We&apos;ll review your event details and contact you within 24 hours to discuss service options and pricing for your public event.
                 </p>
               </div>
+              {travelFee > 0 && (
+                <div className="bg-amber-50 p-6 border border-amber-200 mt-4 rounded-lg">
+                  <h3 className="text-lg font-medium text-amber-900 mb-2">
+                    Estimated Travel Fee
+                  </h3>
+                  <p className="text-amber-800">
+                    Your event is <strong>{travelDistanceMiles} miles</strong> away (~{travelDriveMinutes} min drive). An estimated travel fee of <strong>${travelFee.toFixed(2)}</strong> will be included in your quote.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
