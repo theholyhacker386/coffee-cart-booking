@@ -1,6 +1,6 @@
 {
   "project": "coffee-cart-booking",
-  "current_phase": "live",
+  "current_phase": "building-employee-feature",
   "completed_tasks": [
     "Add Guest Pay 50-drink minimum guarantee flow",
     "Show package selection for all private event payment methods",
@@ -9,18 +9,25 @@
     "Deploy to Netlify production"
   ],
   "pending_tasks": [
-    "Public event customer email shows incorrect package/pricing data",
-    "Save inquiries to Supabase (TODO in code)",
-    "Update customer email contact info placeholders ([YOUR PHONE], [YOUR EMAIL], [YOUR WEBSITE])"
+    "TASK-1: Supabase tables + RLS",
+    "TASK-2: Supabase client/server helpers",
+    "TASK-3: Wire booking form to Supabase + checklist generator",
+    "TASK-4: Employee auth (sign-up + PIN login)",
+    "TASK-5: Employee dashboard",
+    "TASK-6: Schedule timeline + earnings card",
+    "TASK-7: Event detail page + swipeable checklist",
+    "TASK-8: Fix existing email bugs",
+    "TASK-9: Deploy to Netlify"
   ],
   "next_actions": {
     "ai_tasks": [
-      "Fix public event customer email to not show package/pricing sections",
-      "Implement Supabase inquiry storage",
-      "Fill in contact info in customer confirmation email"
+      "Jennifer to confirm checklist items before TASK-3",
+      "Execute Wave 1: TASK-1, TASK-6, TASK-8 in parallel"
     ],
-    "human_tasks": [],
+    "human_tasks": [
+      "Jennifer: Review and confirm checklist items (day-before + day-of)"
+    ],
     "blocked_on": []
   },
-  "last_updated": "2026-02-13 13:54:33 EST"
+  "last_updated": "2026-02-14 08:31:00 EST"
 }
