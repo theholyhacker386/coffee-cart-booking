@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { LogOut, Loader2, CalendarX } from 'lucide-react'
 import EventCard from '@/components/EventCard'
+import AddToHomeScreenPopup from '@/components/AddToHomeScreenPopup'
 
 type FilterTab = 'upcoming' | 'past'
 
@@ -80,6 +81,9 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col">
+      {/* Add to Home Screen popup (mobile only, first visit) */}
+      <AddToHomeScreenPopup />
+
       {/* Header */}
       <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50">
         <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">

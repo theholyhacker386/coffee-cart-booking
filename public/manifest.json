@@ -1,0 +1,21 @@
+{
+  "name": "The Porch Coffee Bar - Employee Portal",
+  "short_name": "The Porch",
+  "description": "Employee checklist and event management for The Porch Coffee Bar",
+  "start_url": "/employee",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#f59e0b",
+  "icons": [
+    {
+      "src": "/the porch coffe bar logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/the porch coffe bar logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

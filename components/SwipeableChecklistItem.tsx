@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useCallback } from 'react'
-import { Check, Circle } from 'lucide-react'
+import { Check } from 'lucide-react'
 
 interface SwipeableChecklistItemProps {
   id: string
@@ -136,7 +136,7 @@ export default function SwipeableChecklistItem({
           className="relative bg-gray-800 border border-gray-700/50 rounded-xl px-4 py-3 flex items-center gap-3"
           style={{ transform: `translateX(${translateX}px)` }}
         >
-          <Circle className="w-5 h-5 text-gray-500 flex-shrink-0" />
+          <div className="w-8 h-8 rounded-full border-2 border-gray-500 flex items-center justify-center flex-shrink-0" />
           <span className="text-sm text-gray-200">{text}</span>
         </div>
       </div>
@@ -194,7 +194,24 @@ export default function SwipeableChecklistItem({
         onTouchEnd={handleTouchEnd}
         onMouseDown={handleMouseDown}
       >
-        <Circle className="w-5 h-5 text-gray-500 flex-shrink-0" />
+        {/* Desktop only: clickable circle to mark done */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (!completed) {
+              setIsAnimatingOut(true)
+              setTranslateX(-(getContainerWidth()))
+              setTimeout(() => {
+                onComplete(id)
+              }, 400)
+            }
+          }}
+          className="hidden md:flex w-8 h-8 rounded-full border-2 border-gray-500 items-center justify-center flex-shrink-0 hover:border-emerald-400 hover:bg-emerald-400/10 transition-colors active:scale-90"
+          aria-label="Mark as done"
+        />
+        {/* Mobile: just a visual circle (swipe to complete) */}
+        <div className="md:hidden w-5 h-5 rounded-full border-2 border-gray-500 flex-shrink-0" />
         <span className="text-sm text-gray-200">{text}</span>
       </div>
     </div>
