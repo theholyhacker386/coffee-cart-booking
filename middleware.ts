@@ -26,5 +26,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/employee/dashboard', '/employee/event/:path*'],
+  matcher: ['/employee/dashboard', '/employee/event/:path*', '/employee/admin/:path*', '/employee/settings/:path*'],
 }

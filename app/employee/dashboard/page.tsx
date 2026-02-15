@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { LogOut, Loader2, CalendarX, Settings } from 'lucide-react'
+import { LogOut, Loader2, CalendarX, Settings, Shield } from 'lucide-react'
 import EventCard from '@/components/EventCard'
 import AddToHomeScreenPopup from '@/components/AddToHomeScreenPopup'
 import NotificationPermissionPopup from '@/components/NotificationPermissionPopup'
@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [employeeName, setEmployeeName] = useState('')
+  const [employeeRole, setEmployeeRole] = useState('')
   const [loggingOut, setLoggingOut] = useState(false)
 
   // Fetch the employee's name from the session
@@ -42,6 +43,7 @@ export default function DashboardPage() {
         if (res.ok) {
           const data = await res.json()
           setEmployeeName(data.name || '')
+          setEmployeeRole(data.role || 'employee')
         }
       } catch {
         // If we can't get the name, that's okay — the header just won't show it
@@ -112,8 +114,17 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Settings + Logout buttons */}
+          {/* Admin + Settings + Logout buttons */}
           <div className="flex items-center gap-1">
+            {employeeRole === 'admin' && (
+              <button
+                onClick={() => router.push('/employee/admin')}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-sm text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+              >
+                <Shield className="w-4 h-4" />
+                <span className="hidden sm:inline text-xs font-medium">Admin</span>
+              </button>
+            )}
             <button
               onClick={() => router.push('/employee/settings')}
               className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"

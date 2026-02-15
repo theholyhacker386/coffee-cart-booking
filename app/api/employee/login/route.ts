@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     // Look up employee by name (case-insensitive)
     const { data: employee } = await supabase
       .from('cc_employees')
-      .select('id, name, pin_hash')
+      .select('id, name, pin_hash, role')
       .ilike('name', name.trim())
       .single()
 
@@ -45,8 +45,8 @@ export async function POST(request: Request) {
       )
     }
 
-    // Set session cookie
-    const token = createSessionToken(employee.id, employee.name)
+    // Set session cookie (include role)
+    const token = createSessionToken(employee.id, employee.name, employee.role || 'employee')
     const cookieStore = await cookies()
     cookieStore.set(EMPLOYEE_COOKIE_NAME, token, SESSION_COOKIE_OPTIONS)
 

@@ -85,7 +85,7 @@ function generatePublicEventChecklist(booking: BookingData): ChecklistItem[] {
   let dayBeforeOrder = 0
   let restockOrder = 0
 
-  // ── DAY-OF: Every event essentials ──
+  // ── DAY-OF: All essentials (full 23-item list) ──
   const essentials = [
     'Cart',
     'Scale',
@@ -117,7 +117,7 @@ function generatePublicEventChecklist(booking: BookingData): ChecklistItem[] {
     items.push({ item_text: text, category: 'essentials', phase: 'day_of', sort_order: dayOfOrder })
   }
 
-  // Espresso items (assume full setup for public)
+  // ── DAY-OF: Full standard espresso setup ──
   const espressoItems = [
     'Espresso machine',
     '2 espresso glass cups',
@@ -132,7 +132,29 @@ function generatePublicEventChecklist(booking: BookingData): ChecklistItem[] {
     items.push({ item_text: text, category: 'espresso', phase: 'day_of', sort_order: dayOfOrder })
   }
 
-  // Venue-specific items
+  // ── DAY-OF: Full premium espresso items ──
+  const premiumItems = [
+    'Cold foam',
+    '2 measuring cups for cold foam (oz)',
+    'Matcha',
+    'Seasonal syrup',
+  ]
+  for (const text of premiumItems) {
+    dayOfOrder++
+    items.push({ item_text: text, category: 'premium', phase: 'day_of', sort_order: dayOfOrder })
+  }
+
+  // ── DAY-OF: Drip coffee brewer (bring everything) ──
+  dayOfOrder++
+  items.push({ item_text: 'Drip coffee brewer', category: 'drip', phase: 'day_of', sort_order: dayOfOrder })
+
+  // Sprinkles check
+  if (hasSprinkles(booking)) {
+    dayOfOrder++
+    items.push({ item_text: 'Sprinkles', category: 'essentials', phase: 'day_of', sort_order: dayOfOrder })
+  }
+
+  // ── DAY-OF: Venue-specific items ──
   if (booking.power_available === 'no') {
     dayOfOrder++
     items.push({ item_text: 'Generator + fuel', category: 'venue', phase: 'day_of', sort_order: dayOfOrder })
@@ -150,11 +172,11 @@ function generatePublicEventChecklist(booking: BookingData): ChecklistItem[] {
     items.push({ item_text: 'Extra trash bags', category: 'venue', phase: 'day_of', sort_order: dayOfOrder })
   }
 
-  // Payment (assume guest pay for public)
+  // ── DAY-OF: Payment (public events are guest-pay) ──
   dayOfOrder++
   items.push({ item_text: 'Square reader + price signage', category: 'payment', phase: 'day_of', sort_order: dayOfOrder })
 
-  // Planning
+  // ── DAY-OF: Planning ──
   dayOfOrder++
   items.push({
     item_text: `Check weather forecast for ${formatEventDate(booking.event_date)}`,
@@ -190,7 +212,7 @@ function generatePublicEventChecklist(booking: BookingData): ChecklistItem[] {
     sort_order: dayOfOrder,
   })
 
-  // ── DAY-BEFORE: Prep ──
+  // ── DAY-BEFORE: Universal prep ──
   const dayBeforeUniversal = [
     'Call the shop to check if coffee cart prep list is ready',
     'Confirm event details haven\'t changed',
@@ -205,7 +227,7 @@ function generatePublicEventChecklist(booking: BookingData): ChecklistItem[] {
     items.push({ item_text: text, category: 'prep', phase: 'day_before', sort_order: dayBeforeOrder })
   }
 
-  // Full espresso prep for public events
+  // ── DAY-BEFORE: Full standard espresso prep ──
   const standardEspressoPrep = [
     'Check espresso beans supply',
     'Is cold brew brewed and ready?',
@@ -218,6 +240,27 @@ function generatePublicEventChecklist(booking: BookingData): ChecklistItem[] {
     dayBeforeOrder++
     items.push({ item_text: text, category: 'prep', phase: 'day_before', sort_order: dayBeforeOrder })
   }
+
+  // ── DAY-BEFORE: Full premium espresso prep ──
+  const premiumPrep = [
+    'Check oat milk and almond milk stocked',
+    'Check matcha powder supply',
+    'Check chai concentrate supply',
+    'Check cold foam supplies',
+  ]
+  for (const text of premiumPrep) {
+    dayBeforeOrder++
+    items.push({ item_text: text, category: 'prep', phase: 'day_before', sort_order: dayBeforeOrder })
+  }
+
+  // ── DAY-BEFORE: Confirm with Jennifer ──
+  dayBeforeOrder++
+  items.push({
+    item_text: 'Confirm event details with Jennifer',
+    category: 'prep',
+    phase: 'day_before',
+    sort_order: dayBeforeOrder,
+  })
 
   // ── RESTOCK: Every event ──
   const restockItems = [

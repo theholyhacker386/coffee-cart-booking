@@ -24,6 +24,9 @@ import {
   ShieldCheck,
   UserPlus,
   X,
+  Shield,
+  DollarSign,
+  Save,
 } from 'lucide-react'
 import ScheduleTimeline from '@/components/ScheduleTimeline'
 import EarningsCard from '@/components/EarningsCard'
@@ -67,6 +70,7 @@ interface Booking {
   status: string
   staffing?: number
   assigned_employees?: string[]
+  total_sales?: number | null
 }
 
 interface Employee {
@@ -181,6 +185,14 @@ export default function EventDetailPage() {
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([])
   const [savingAssignment, setSavingAssignment] = useState(false)
 
+  // Admin profit tracking
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [totalSalesInput, setTotalSalesInput] = useState('')
+  const [savingSales, setSavingSales] = useState(false)
+  const [salesSaved, setSalesSaved] = useState(false)
+  const [currentEmployeeId, setCurrentEmployeeId] = useState('')
+  const [currentEmployeeName, setCurrentEmployeeName] = useState('')
+
   // Fetch booking + checklist data
   const fetchData = useCallback(async () => {
     try {
@@ -212,6 +224,55 @@ export default function EventDetailPage() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // Fetch current employee identity for time clock + admin check
+  useEffect(() => {
+    async function fetchMe() {
+      try {
+        const res = await fetch('/api/employee/me')
+        if (res.ok) {
+          const data = await res.json()
+          setCurrentEmployeeId(data.id || '')
+          setCurrentEmployeeName(data.name || '')
+          setIsAdmin(data.role === 'admin')
+        }
+      } catch {
+        // Non-critical — time clock just won't show employee name
+      }
+    }
+    fetchMe()
+  }, [])
+
+  // Initialize total sales input when booking loads
+  useEffect(() => {
+    if (booking?.total_sales !== undefined && booking.total_sales !== null) {
+      setTotalSalesInput(booking.total_sales.toString())
+    }
+  }, [booking?.total_sales])
+
+  // Save total sales (admin only)
+  const handleSaveTotalSales = useCallback(async () => {
+    if (!booking) return
+    setSavingSales(true)
+    setSalesSaved(false)
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ total_sales: parseFloat(totalSalesInput) || 0 }),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setBooking(prev => prev ? { ...prev, total_sales: updated.total_sales } : prev)
+        setSalesSaved(true)
+        setTimeout(() => setSalesSaved(false), 2000)
+      }
+    } catch {
+      // Failed to save
+    } finally {
+      setSavingSales(false)
+    }
+  }, [bookingId, totalSalesInput, booking])
 
   // Handle completing a checklist item (swipe)
   const handleComplete = useCallback(async (itemId: string) => {
@@ -477,6 +538,108 @@ export default function EventDetailPage() {
             travelDistanceMiles={booking.travel_distance_miles || 0}
           />
         </section>
+
+        {/* ===== ADMIN PROFIT SUMMARY ===== */}
+        {isAdmin && (
+          <section>
+            <h2 className="text-xs font-bold tracking-widest text-amber-400 uppercase mb-3 flex items-center gap-2">
+              <Shield className="w-3.5 h-3.5" />
+              Profit Summary
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Admin</span>
+            </h2>
+            <div className="bg-gray-900 border border-gray-700/50 rounded-2xl p-5">
+              {/* Total Sales Input */}
+              <div className="mb-5">
+                <label className="text-xs text-gray-500 uppercase tracking-wide mb-2 block">Total Sales</label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="number"
+                      value={totalSalesInput}
+                      onChange={e => setTotalSalesInput(e.target.value)}
+                      placeholder="0.00"
+                      step="0.01"
+                      min="0"
+                      className="w-full pl-8 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-colors text-sm font-mono"
+                    />
+                  </div>
+                  <button
+                    onClick={handleSaveTotalSales}
+                    disabled={savingSales}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium bg-amber-500 text-gray-950 hover:bg-amber-400 active:scale-[0.98] disabled:opacity-50 transition-all"
+                  >
+                    {savingSales ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : salesSaved ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    {salesSaved ? 'Saved' : 'Save'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Profit calculation */}
+              {(() => {
+                const sales = parseFloat(totalSalesInput) || 0
+                const staffCount = booking.staffing || 1
+                const serviceHours = 2 + (booking.extra_hours || 0)
+                const driveTimeHours = ((booking.travel_drive_minutes || 0) * 2) / 60
+                const totalWorkHours = serviceHours + driveTimeHours
+                const hourlyCost = staffCount * totalWorkHours * 15
+                const mileageCost = staffCount * ((booking.travel_distance_miles || 0) * 2) * 0.725
+                const totalEmployeeCost = hourlyCost + mileageCost
+                const netProfit = sales - totalEmployeeCost
+                const profitColor = netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'
+                const profitBg = netProfit >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'
+
+                return (
+                  <>
+                    {/* Revenue */}
+                    <div className="flex items-baseline justify-between text-sm mb-3">
+                      <span className="text-gray-300">Revenue</span>
+                      <span className="text-gray-100 font-medium font-mono">${sales.toFixed(2)}</span>
+                    </div>
+
+                    {/* Employee costs header */}
+                    <div className="mb-2">
+                      <span className="text-xs text-gray-500 uppercase tracking-wide">Employee Costs</span>
+                    </div>
+
+                    {/* Hourly cost */}
+                    <div className="flex items-baseline justify-between text-sm mb-1.5 pl-3">
+                      <span className="text-gray-400 text-xs">
+                        Hourly ({staffCount} emp x {totalWorkHours.toFixed(1)} hrs x $15)
+                      </span>
+                      <span className="text-red-300 font-mono text-xs">-${hourlyCost.toFixed(2)}</span>
+                    </div>
+
+                    {/* Mileage cost */}
+                    <div className="flex items-baseline justify-between text-sm mb-3 pl-3">
+                      <span className="text-gray-400 text-xs">
+                        Mileage ({staffCount} x {((booking.travel_distance_miles || 0) * 2).toFixed(0)} mi x $0.725)
+                      </span>
+                      <span className="text-red-300 font-mono text-xs">-${mileageCost.toFixed(2)}</span>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="h-px bg-gray-700 mb-3" />
+
+                    {/* Net Profit */}
+                    <div className={`flex items-baseline justify-between p-3 rounded-xl border ${profitBg}`}>
+                      <span className="text-sm font-bold text-gray-200">Net Profit</span>
+                      <span className={`text-lg font-bold font-mono ${profitColor}`}>
+                        {netProfit < 0 ? '-' : ''}${Math.abs(netProfit).toFixed(2)}
+                      </span>
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+          </section>
+        )}
 
         {/* ===== D. EVENT DETAILS CARD ===== */}
         <section>

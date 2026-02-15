@@ -18,11 +18,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 })
     }
 
-    // Fetch the full employee record from the database so we can return preferences
+    // Fetch the full employee record from the database so we can return preferences + role
     const supabase = createServiceRoleClient()
     const { data: employee } = await supabase
       .from('cc_employees')
-      .select('id, name, notify_two_person_only')
+      .select('id, name, notify_two_person_only, role')
       .eq('id', session.id)
       .single()
 
@@ -30,12 +30,13 @@ export async function GET() {
       return NextResponse.json({
         id: employee.id,
         name: employee.name,
+        role: employee.role || 'employee',
         notifyTwoPersonOnly: employee.notify_two_person_only ?? false,
       })
     }
 
     // Fallback to session data if DB lookup fails
-    return NextResponse.json({ id: session.id, name: session.name, notifyTwoPersonOnly: false })
+    return NextResponse.json({ id: session.id, name: session.name, role: session.role || 'employee', notifyTwoPersonOnly: false })
   } catch {
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
   }

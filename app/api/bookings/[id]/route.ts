@@ -63,13 +63,31 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
-    const { assigned_employees } = body
+    const { assigned_employees, total_sales } = body
 
+    const supabase = createServiceRoleClient()
+
+    // If total_sales is being updated (admin profit tracking)
+    if (total_sales !== undefined) {
+      const { data: updatedBooking, error: updateError } = await supabase
+        .from('cc_bookings')
+        .update({ total_sales: total_sales })
+        .eq('id', id)
+        .select('*')
+        .single()
+
+      if (updateError) {
+        console.error('Error updating total_sales:', updateError)
+        return NextResponse.json({ error: 'Failed to update total sales' }, { status: 500 })
+      }
+
+      return NextResponse.json(updatedBooking)
+    }
+
+    // If assigned_employees is being updated
     if (!Array.isArray(assigned_employees)) {
       return NextResponse.json({ error: 'assigned_employees must be an array' }, { status: 400 })
     }
-
-    const supabase = createServiceRoleClient()
 
     // Fetch current booking to know who was already assigned
     const { data: currentBooking } = await supabase

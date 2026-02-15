@@ -6,6 +6,7 @@ import {
   createSessionToken,
   EMPLOYEE_COOKIE_NAME,
   INVITE_CODE,
+  ADMIN_INVITE_CODE,
   SESSION_COOKIE_OPTIONS,
 } from '@/lib/employee-auth'
 
@@ -14,13 +15,18 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { name, pin, inviteCode, notifyTwoPersonOnly } = body
 
-    // Validate invite code
-    if (inviteCode !== INVITE_CODE) {
+    // Validate invite code — accept both employee and admin codes
+    const isAdminSignup = inviteCode === ADMIN_INVITE_CODE
+    const isEmployeeSignup = inviteCode === INVITE_CODE
+    if (!isAdminSignup && !isEmployeeSignup) {
       return NextResponse.json(
         { error: 'Invalid invite code' },
         { status: 403 }
       )
     }
+
+    // Determine role based on invite code
+    const role = isAdminSignup ? 'admin' : 'employee'
 
     // Validate name
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -58,11 +64,11 @@ export async function POST(request: Request) {
     // Hash the PIN
     const pinHash = await hashPin(pin)
 
-    // Insert the new employee
+    // Insert the new employee with role
     const { data: employee, error: insertError } = await supabase
       .from('cc_employees')
-      .insert({ name: trimmedName, pin_hash: pinHash, notify_two_person_only: notifyTwoPersonOnly || false })
-      .select('id, name')
+      .insert({ name: trimmedName, pin_hash: pinHash, notify_two_person_only: notifyTwoPersonOnly || false, role })
+      .select('id, name, role')
       .single()
 
     if (insertError) {
@@ -73,14 +79,14 @@ export async function POST(request: Request) {
       )
     }
 
-    // Set session cookie
-    const token = createSessionToken(employee.id, employee.name)
+    // Set session cookie (include role in token)
+    const token = createSessionToken(employee.id, employee.name, employee.role || 'employee')
     const cookieStore = await cookies()
     cookieStore.set(EMPLOYEE_COOKIE_NAME, token, SESSION_COOKIE_OPTIONS)
 
     return NextResponse.json({
       success: true,
-      employee: { id: employee.id, name: employee.name },
+      employee: { id: employee.id, name: employee.name, role: employee.role },
     })
   } catch (error) {
     console.error('Signup error:', error)
