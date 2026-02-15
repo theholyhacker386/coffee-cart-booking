@@ -63,22 +63,27 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
-    const { assigned_employees, total_sales } = body
+    const { assigned_employees, total_sales, square_sales, cash_sales } = body
 
     const supabase = createServiceRoleClient()
 
-    // If total_sales is being updated (admin profit tracking)
-    if (total_sales !== undefined) {
+    // If sales data is being updated
+    if (total_sales !== undefined || square_sales !== undefined || cash_sales !== undefined) {
+      const updateData: Record<string, number> = {}
+      if (total_sales !== undefined) updateData.total_sales = total_sales
+      if (square_sales !== undefined) updateData.square_sales = square_sales
+      if (cash_sales !== undefined) updateData.cash_sales = cash_sales
+
       const { data: updatedBooking, error: updateError } = await supabase
         .from('cc_bookings')
-        .update({ total_sales: total_sales })
+        .update(updateData)
         .eq('id', id)
         .select('*')
         .single()
 
       if (updateError) {
-        console.error('Error updating total_sales:', updateError)
-        return NextResponse.json({ error: 'Failed to update total sales' }, { status: 500 })
+        console.error('Error updating sales:', updateError)
+        return NextResponse.json({ error: 'Failed to update sales' }, { status: 500 })
       }
 
       return NextResponse.json(updatedBooking)

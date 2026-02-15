@@ -71,6 +71,8 @@ interface Booking {
   staffing?: number
   assigned_employees?: string[]
   total_sales?: number | null
+  square_sales?: number | null
+  cash_sales?: number | null
 }
 
 interface Employee {
@@ -188,6 +190,8 @@ export default function EventDetailPage() {
   // Admin profit tracking
   const [isAdmin, setIsAdmin] = useState(false)
   const [totalSalesInput, setTotalSalesInput] = useState('')
+  const [squareSalesInput, setSquareSalesInput] = useState('')
+  const [cashSalesInput, setCashSalesInput] = useState('')
   const [savingSales, setSavingSales] = useState(false)
   const [salesSaved, setSalesSaved] = useState(false)
   const [currentEmployeeId, setCurrentEmployeeId] = useState('')
@@ -243,27 +247,37 @@ export default function EventDetailPage() {
     fetchMe()
   }, [])
 
-  // Initialize total sales input when booking loads
+  // Initialize sales inputs when booking loads
   useEffect(() => {
     if (booking?.total_sales !== undefined && booking.total_sales !== null) {
       setTotalSalesInput(booking.total_sales.toString())
     }
-  }, [booking?.total_sales])
+    if (booking?.square_sales !== undefined && booking.square_sales !== null) {
+      setSquareSalesInput(booking.square_sales.toString())
+    }
+    if (booking?.cash_sales !== undefined && booking.cash_sales !== null) {
+      setCashSalesInput(booking.cash_sales.toString())
+    }
+  }, [booking?.total_sales, booking?.square_sales, booking?.cash_sales])
 
-  // Save total sales (admin only)
-  const handleSaveTotalSales = useCallback(async () => {
+  // Save sales data
+  const handleSaveSales = useCallback(async () => {
     if (!booking) return
     setSavingSales(true)
     setSalesSaved(false)
     try {
+      const squareVal = parseFloat(squareSalesInput) || 0
+      const cashVal = parseFloat(cashSalesInput) || 0
+      const totalVal = squareVal + cashVal
       const res = await fetch(`/api/bookings/${bookingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ total_sales: parseFloat(totalSalesInput) || 0 }),
+        body: JSON.stringify({ total_sales: totalVal, square_sales: squareVal, cash_sales: cashVal }),
       })
       if (res.ok) {
         const updated = await res.json()
-        setBooking(prev => prev ? { ...prev, total_sales: updated.total_sales } : prev)
+        setBooking(prev => prev ? { ...prev, total_sales: updated.total_sales, square_sales: updated.square_sales, cash_sales: updated.cash_sales } : prev)
+        setTotalSalesInput(totalVal.toString())
         setSalesSaved(true)
         setTimeout(() => setSalesSaved(false), 2000)
       }
@@ -272,7 +286,7 @@ export default function EventDetailPage() {
     } finally {
       setSavingSales(false)
     }
-  }, [bookingId, totalSalesInput, booking])
+  }, [bookingId, squareSalesInput, cashSalesInput, booking])
 
   // Handle completing a checklist item (swipe)
   const handleComplete = useCallback(async (itemId: string) => {
@@ -548,42 +562,62 @@ export default function EventDetailPage() {
               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Admin</span>
             </h2>
             <div className="bg-gray-900 border border-gray-700/50 rounded-2xl p-5">
-              {/* Total Sales Input */}
-              <div className="mb-5">
-                <label className="text-xs text-gray-500 uppercase tracking-wide mb-2 block">Total Sales</label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="number"
-                      value={totalSalesInput}
-                      onChange={e => setTotalSalesInput(e.target.value)}
-                      placeholder="0.00"
-                      step="0.01"
-                      min="0"
-                      className="w-full pl-8 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-colors text-sm font-mono"
-                    />
-                  </div>
-                  <button
-                    onClick={handleSaveTotalSales}
-                    disabled={savingSales}
-                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium bg-amber-500 text-gray-950 hover:bg-amber-400 active:scale-[0.98] disabled:opacity-50 transition-all"
-                  >
-                    {savingSales ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : salesSaved ? (
-                      <CheckCircle2 className="w-4 h-4" />
-                    ) : (
-                      <Save className="w-4 h-4" />
-                    )}
-                    {salesSaved ? 'Saved' : 'Save'}
-                  </button>
+              {/* Square Sales Input */}
+              <div className="mb-3">
+                <label className="text-xs text-gray-500 uppercase tracking-wide mb-1.5 block">Square Sales</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="number"
+                    value={squareSalesInput}
+                    onChange={e => setSquareSalesInput(e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    className="w-full pl-8 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-colors text-sm font-mono"
+                  />
                 </div>
               </div>
 
+              {/* Cash Sales Input */}
+              <div className="mb-4">
+                <label className="text-xs text-gray-500 uppercase tracking-wide mb-1.5 block">Cash Sales</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="number"
+                    value={cashSalesInput}
+                    onChange={e => setCashSalesInput(e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    className="w-full pl-8 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-colors text-sm font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Save button */}
+              <button
+                onClick={handleSaveSales}
+                disabled={savingSales}
+                className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium bg-amber-500 text-gray-950 hover:bg-amber-400 active:scale-[0.98] disabled:opacity-50 transition-all mb-5"
+              >
+                {savingSales ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : salesSaved ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {salesSaved ? 'Saved' : 'Save Sales'}
+              </button>
+
               {/* Profit calculation */}
               {(() => {
-                const sales = parseFloat(totalSalesInput) || 0
+                const squareSales = parseFloat(squareSalesInput) || 0
+                const cashSales = parseFloat(cashSalesInput) || 0
+                const totalSales = squareSales + cashSales
+                const cogsCost = totalSales * 0.30
                 const staffCount = booking.staffing || 1
                 const serviceHours = 2 + (booking.extra_hours || 0)
                 const driveTimeHours = ((booking.travel_drive_minutes || 0) * 2) / 60
@@ -591,16 +625,35 @@ export default function EventDetailPage() {
                 const hourlyCost = staffCount * totalWorkHours * 15
                 const mileageCost = staffCount * ((booking.travel_distance_miles || 0) * 2) * 0.725
                 const totalEmployeeCost = hourlyCost + mileageCost
-                const netProfit = sales - totalEmployeeCost
+                const netProfit = totalSales - cogsCost - totalEmployeeCost
                 const profitColor = netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'
                 const profitBg = netProfit >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'
 
                 return (
                   <>
-                    {/* Revenue */}
+                    {/* Revenue breakdown */}
+                    <div className="flex items-baseline justify-between text-sm mb-1">
+                      <span className="text-gray-400 text-xs pl-3">Square</span>
+                      <span className="text-gray-300 font-mono text-xs">${squareSales.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-baseline justify-between text-sm mb-2">
+                      <span className="text-gray-400 text-xs pl-3">Cash</span>
+                      <span className="text-gray-300 font-mono text-xs">${cashSales.toFixed(2)}</span>
+                    </div>
                     <div className="flex items-baseline justify-between text-sm mb-3">
-                      <span className="text-gray-300">Revenue</span>
-                      <span className="text-gray-100 font-medium font-mono">${sales.toFixed(2)}</span>
+                      <span className="text-gray-300 font-medium">Total Revenue</span>
+                      <span className="text-gray-100 font-medium font-mono">${totalSales.toFixed(2)}</span>
+                    </div>
+
+                    {/* COGS */}
+                    <div className="mb-2">
+                      <span className="text-xs text-gray-500 uppercase tracking-wide">Cost of Goods (30%)</span>
+                    </div>
+                    <div className="flex items-baseline justify-between text-sm mb-3 pl-3">
+                      <span className="text-gray-400 text-xs">
+                        ${totalSales.toFixed(2)} x 30%
+                      </span>
+                      <span className="text-red-300 font-mono text-xs">-${cogsCost.toFixed(2)}</span>
                     </div>
 
                     {/* Employee costs header */}
@@ -611,7 +664,7 @@ export default function EventDetailPage() {
                     {/* Hourly cost */}
                     <div className="flex items-baseline justify-between text-sm mb-1.5 pl-3">
                       <span className="text-gray-400 text-xs">
-                        Hourly ({staffCount} emp x {totalWorkHours.toFixed(1)} hrs x $15)
+                        Hourly ({staffCount} x {totalWorkHours.toFixed(1)} hrs x $15)
                       </span>
                       <span className="text-red-300 font-mono text-xs">-${hourlyCost.toFixed(2)}</span>
                     </div>
@@ -1049,18 +1102,73 @@ export default function EventDetailPage() {
           </section>
         )}
 
-        {/* ===== I. COMPLETION SECTION ===== */}
+        {/* ===== I. COMPLETION SECTION — Sales Entry + Complete ===== */}
         {allItemsComplete && booking.status !== 'completed' && !completionMessage && (
-          <section className="pb-4">
+          <section className="pb-4 space-y-4">
+            {/* Sales entry — for ALL employees to fill in */}
+            <div className="bg-gray-900 border border-gray-700/50 rounded-2xl p-5">
+              <h2 className="text-xs font-bold tracking-widest text-amber-400 uppercase mb-4">
+                End of Service — Enter Sales
+              </h2>
+              <p className="text-xs text-gray-400 mb-4">Enter the sales totals before marking the event complete.</p>
+
+              {/* Square Sales */}
+              <div className="mb-3">
+                <label className="text-xs text-gray-500 uppercase tracking-wide mb-1.5 block">Square Sales</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="number"
+                    value={squareSalesInput}
+                    onChange={e => setSquareSalesInput(e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    className="w-full pl-8 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-colors text-sm font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Cash Sales */}
+              <div className="mb-4">
+                <label className="text-xs text-gray-500 uppercase tracking-wide mb-1.5 block">Cash Sales</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="number"
+                    value={cashSalesInput}
+                    onChange={e => setCashSalesInput(e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    className="w-full pl-8 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-colors text-sm font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Combined total display */}
+              <div className="flex items-baseline justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                <span className="text-sm text-gray-300">Total Sales</span>
+                <span className="text-base font-bold font-mono text-white">
+                  ${((parseFloat(squareSalesInput) || 0) + (parseFloat(cashSalesInput) || 0)).toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Complete event button */}
             <button
-              onClick={handleCompleteEvent}
-              disabled={completing}
+              onClick={async () => {
+                // Save sales first, then complete event
+                await handleSaveSales()
+                handleCompleteEvent()
+              }}
+              disabled={completing || savingSales}
               className="w-full py-4 rounded-2xl text-base font-bold transition-all duration-200 bg-gradient-to-r from-amber-500 to-amber-600 text-gray-950 hover:from-amber-400 hover:to-amber-500 active:scale-[0.98] disabled:opacity-50"
             >
-              {completing ? (
+              {completing || savingSales ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Completing...
+                  {savingSales ? 'Saving Sales...' : 'Completing...'}
                 </span>
               ) : (
                 'Mark Event as Completed'
