@@ -6,7 +6,7 @@
     
 import {
   require_semver
-} from "../esm-chunks/chunk-TVEBGDAB.js";
+} from "../esm-chunks/chunk-JNOKXHJS.js";
 import {
   __toESM
 } from "../esm-chunks/chunk-6BT4RYQJ.js";

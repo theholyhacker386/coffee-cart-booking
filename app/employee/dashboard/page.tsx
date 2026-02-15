@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { LogOut, Loader2, CalendarX } from 'lucide-react'
+import { LogOut, Loader2, CalendarX, Settings } from 'lucide-react'
 import EventCard from '@/components/EventCard'
 import AddToHomeScreenPopup from '@/components/AddToHomeScreenPopup'
 import NotificationPermissionPopup from '@/components/NotificationPermissionPopup'
 
 type FilterTab = 'upcoming' | 'past'
+type AssignmentFilter = 'all' | 'mine'
 
 interface Booking {
   id: string
@@ -21,11 +22,13 @@ interface Booking {
   status: string
   checklist_total: number
   checklist_completed: number
+  staffing?: number
 }
 
 export default function DashboardPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<FilterTab>('upcoming')
+  const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>('all')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [employeeName, setEmployeeName] = useState('')
@@ -47,11 +50,13 @@ export default function DashboardPage() {
     fetchEmployee()
   }, [])
 
-  // Fetch bookings whenever the active tab changes
-  const fetchBookings = useCallback(async (filter: FilterTab) => {
+  // Fetch bookings whenever the active tab or assignment filter changes
+  const fetchBookings = useCallback(async (filter: FilterTab, assignment: AssignmentFilter) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/bookings?filter=${filter}`)
+      let url = `/api/bookings?filter=${filter}`
+      if (assignment === 'mine') url += '&assigned=true'
+      const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
         setBookings(data)
@@ -66,8 +71,8 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    fetchBookings(activeTab)
-  }, [activeTab, fetchBookings])
+    fetchBookings(activeTab, assignmentFilter)
+  }, [activeTab, assignmentFilter, fetchBookings])
 
   // Handle logout
   async function handleLogout() {
@@ -107,19 +112,27 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Logout button */}
-          <button
-            onClick={handleLogout}
-            disabled={loggingOut}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
-          >
-            {loggingOut ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <LogOut className="w-4 h-4" />
-            )}
-            <span className="hidden sm:inline">Logout</span>
-          </button>
+          {/* Settings + Logout buttons */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => router.push('/employee/settings')}
+              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+            >
+              {loggingOut ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <LogOut className="w-4 h-4" />
+              )}
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -148,6 +161,32 @@ export default function DashboardPage() {
             }`}
           >
             Past
+          </button>
+        </div>
+
+        {/* Assignment filter */}
+        <div className="flex bg-white/5 rounded-lg p-0.5 mb-4">
+          <button
+            type="button"
+            onClick={() => setAssignmentFilter('all')}
+            className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+              assignmentFilter === 'all'
+                ? 'bg-white/10 text-white'
+                : 'text-white/40 hover:text-white/60'
+            }`}
+          >
+            All Events
+          </button>
+          <button
+            type="button"
+            onClick={() => setAssignmentFilter('mine')}
+            className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+              assignmentFilter === 'mine'
+                ? 'bg-white/10 text-white'
+                : 'text-white/40 hover:text-white/60'
+            }`}
+          >
+            My Events
           </button>
         </div>
 
@@ -190,6 +229,7 @@ export default function DashboardPage() {
                 status={booking.status || 'pending'}
                 checklistTotal={booking.checklist_total}
                 checklistCompleted={booking.checklist_completed}
+                staffing={booking.staffing}
               />
             ))}
           </div>

@@ -15,6 +15,7 @@ export default function EmployeeLoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [pinError, setPinError] = useState(false)
+  const [notifyTwoPersonOnly, setNotifyTwoPersonOnly] = useState(false)
 
   const handleSubmit = useCallback(async (pin: string) => {
     setError('')
@@ -42,7 +43,7 @@ export default function EmployeeLoginPage() {
 
       const body = mode === 'signin'
         ? { name: name.trim(), pin }
-        : { name: name.trim(), pin, inviteCode: inviteCode.trim() }
+        : { name: name.trim(), pin, inviteCode: inviteCode.trim(), notifyTwoPersonOnly }
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -145,6 +146,22 @@ export default function EmployeeLoginPage() {
               autoComplete="off"
             />
           </div>
+        )}
+
+        {/* Notification preference (signup only) */}
+        {mode === 'signup' && (
+          <label className="flex items-start gap-3 px-1 pt-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={notifyTwoPersonOnly}
+              onChange={e => setNotifyTwoPersonOnly(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-white/20 bg-white/10 text-amber-500 focus:ring-amber-500/50 accent-amber-500"
+            />
+            <div>
+              <span className="text-sm text-white/80">Only notify me for 2-person events (75+ drinks)</span>
+              <p className="text-xs text-white/40 mt-0.5">Check this if you prefer not to work solo events</p>
+            </div>
+          </label>
         )}
 
         {/* PIN label */}

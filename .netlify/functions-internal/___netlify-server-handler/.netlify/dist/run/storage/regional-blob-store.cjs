@@ -772,14 +772,14 @@ var Store = class _Store {
     };
   }
 };
-var getDeployStore = (input = {}) => {
+var getDeployStore = (input = {}, options) => {
   const context = getEnvironmentContext();
-  const options = typeof input === "string" ? { name: input } : input;
-  const deployID = options.deployID ?? context.deployID;
+  const mergedOptions = typeof input === "string" ? { ...options, name: input } : input;
+  const deployID = mergedOptions.deployID ?? context.deployID;
   if (!deployID) {
     throw new MissingBlobsEnvironmentError(["deployID"]);
   }
-  const clientOptions = getClientOptions(options, context);
+  const clientOptions = getClientOptions(mergedOptions, context);
   if (!clientOptions.region) {
     if (clientOptions.edgeURL || clientOptions.uncachedEdgeURL) {
       if (!context.primaryRegion) {
@@ -793,11 +793,11 @@ var getDeployStore = (input = {}) => {
     }
   }
   const client = new Client(clientOptions);
-  return new Store({ client, deployID, name: options.name });
+  return new Store({ client, deployID, name: mergedOptions.name });
 };
 
 // src/run/storage/regional-blob-store.cts
-var FETCH_BEFORE_NEXT_PATCHED_IT = Symbol.for("nf-not-patched-fetch");
+var FETCH_BEFORE_NEXT_PATCHED_IT = /* @__PURE__ */ Symbol.for("nf-not-patched-fetch");
 var extendedGlobalThis = globalThis;
 function attemptToGetOriginalFetch(fetch) {
   return fetch._nextOriginalFetch ?? fetch;

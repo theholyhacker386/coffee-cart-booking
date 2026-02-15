@@ -12,7 +12,7 @@ import {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { name, pin, inviteCode } = body
+    const { name, pin, inviteCode, notifyTwoPersonOnly } = body
 
     // Validate invite code
     if (inviteCode !== INVITE_CODE) {
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     // Insert the new employee
     const { data: employee, error: insertError } = await supabase
       .from('cc_employees')
-      .insert({ name: trimmedName, pin_hash: pinHash })
+      .insert({ name: trimmedName, pin_hash: pinHash, notify_two_person_only: notifyTwoPersonOnly || false })
       .select('id, name')
       .single()
 

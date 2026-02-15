@@ -20,7 +20,40 @@
     "afterFiles": [],
     "fallback": []
   },
-  "dynamicRoutes": [],
+  "dynamicRoutes": [
+    {
+      "page": "/api/bookings/[id]",
+      "regex": "^/api/bookings/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/bookings/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/bookings/[id]/checklist",
+      "regex": "^/api/bookings/([^/]+?)/checklist(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/bookings/(?<nxtPid>[^/]+?)/checklist(?:/)?$"
+    },
+    {
+      "page": "/api/bookings/[id]/complete",
+      "regex": "^/api/bookings/([^/]+?)/complete(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/bookings/(?<nxtPid>[^/]+?)/complete(?:/)?$"
+    },
+    {
+      "page": "/employee/event/[id]",
+      "regex": "^/employee/event/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/employee/event/(?<nxtPid>[^/]+?)(?:/)?$"
+    }
+  ],
   "staticRoutes": [
     {
       "page": "/",
@@ -41,6 +74,36 @@
       "namedRegex": "^/_not\\-found(?:/)?$"
     },
     {
+      "page": "/api/bookings",
+      "regex": "^/api/bookings(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/bookings(?:/)?$"
+    },
+    {
+      "page": "/api/employee/login",
+      "regex": "^/api/employee/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/employee/login(?:/)?$"
+    },
+    {
+      "page": "/api/employee/logout",
+      "regex": "^/api/employee/logout(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/employee/logout(?:/)?$"
+    },
+    {
+      "page": "/api/employee/me",
+      "regex": "^/api/employee/me(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/employee/me(?:/)?$"
+    },
+    {
+      "page": "/api/employee/signup",
+      "regex": "^/api/employee/signup(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/employee/signup(?:/)?$"
+    },
+    {
       "page": "/api/send-email",
       "regex": "^/api/send\\-email(?:/)?$",
       "routeKeys": {},
@@ -57,6 +120,18 @@
       "regex": "^/customer/book(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/customer/book(?:/)?$"
+    },
+    {
+      "page": "/employee",
+      "regex": "^/employee(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/employee(?:/)?$"
+    },
+    {
+      "page": "/employee/dashboard",
+      "regex": "^/employee/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/employee/dashboard(?:/)?$"
     },
     {
       "page": "/favicon.ico",

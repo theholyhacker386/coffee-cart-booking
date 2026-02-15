@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Calendar, Coffee, User, Clock } from 'lucide-react'
+import { Calendar, Coffee, User, Clock, Users } from 'lucide-react'
 import ChecklistProgress from './ChecklistProgress'
 
 interface EventCardProps {
@@ -15,6 +15,7 @@ interface EventCardProps {
   status: string
   checklistTotal: number
   checklistCompleted: number
+  staffing?: number
 }
 
 /** Map drink package codes to friendly display names */
@@ -65,6 +66,7 @@ export default function EventCard({
   status,
   checklistTotal,
   checklistCompleted,
+  staffing = 1,
 }: EventCardProps) {
   const displayDate = formatEventDate(eventDate)
   const displayEventType = getEventTypeName(eventType, customEventType)
@@ -98,12 +100,22 @@ export default function EventCard({
         <span className="text-sm text-gray-300">{customerName || 'Unknown'}</span>
       </div>
 
-      {/* Package */}
+      {/* Package + staffing badge */}
       <div className="flex items-center gap-2 mb-4">
         <Coffee className="w-3.5 h-3.5 text-gray-400" />
         <span className="text-sm text-gray-400">
           {eventCategory === 'public' ? 'Public Event' : displayPackage}
         </span>
+        {staffing === 2 ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+            <Users className="w-2.5 h-2.5" />
+            2-Person
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-500/20 text-gray-400 border border-gray-500/30">
+            1-Person
+          </span>
+        )}
       </div>
 
       {/* Checklist progress */}

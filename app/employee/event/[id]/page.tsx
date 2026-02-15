@@ -22,6 +22,8 @@ import {
   CheckCircle2,
   Clock,
   ShieldCheck,
+  UserPlus,
+  X,
 } from 'lucide-react'
 import ScheduleTimeline from '@/components/ScheduleTimeline'
 import EarningsCard from '@/components/EarningsCard'
@@ -63,6 +65,13 @@ interface Booking {
   estimated_people: string | null
   additional_details: string | null
   status: string
+  staffing?: number
+  assigned_employees?: string[]
+}
+
+interface Employee {
+  id: string
+  name: string
 }
 
 interface ChecklistItem {
@@ -167,6 +176,10 @@ export default function EventDetailPage() {
   const [recipesOpen, setRecipesOpen] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [completionMessage, setCompletionMessage] = useState('')
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([])
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([])
+  const [savingAssignment, setSavingAssignment] = useState(false)
 
   // Fetch booking + checklist data
   const fetchData = useCallback(async () => {
@@ -289,6 +302,73 @@ export default function EventDetailPage() {
       setCompleting(false)
     }
   }, [bookingId, booking])
+
+  // Open assignment modal and fetch employee list
+  const openAssignModal = useCallback(async () => {
+    setShowAssignModal(true)
+    setSelectedEmployees(booking?.assigned_employees || [])
+
+    try {
+      const res = await fetch('/api/employees')
+      if (res.ok) {
+        const data = await res.json()
+        setAllEmployees(data)
+      }
+    } catch {
+      // Failed to load employees
+    }
+  }, [booking?.assigned_employees])
+
+  // Toggle employee selection in the modal
+  const toggleEmployee = useCallback((employeeId: string) => {
+    setSelectedEmployees(prev =>
+      prev.includes(employeeId)
+        ? prev.filter(id => id !== employeeId)
+        : [...prev, employeeId]
+    )
+  }, [])
+
+  // Save the assignment
+  const saveAssignment = useCallback(async () => {
+    setSavingAssignment(true)
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assigned_employees: selectedEmployees }),
+      })
+
+      if (res.ok) {
+        const updatedBooking = await res.json()
+        setBooking(prev => prev ? { ...prev, assigned_employees: updatedBooking.assigned_employees } : prev)
+        setShowAssignModal(false)
+      }
+    } catch {
+      // Network error
+    } finally {
+      setSavingAssignment(false)
+    }
+  }, [bookingId, selectedEmployees])
+
+  // Get display names for assigned employees
+  const getAssignedNames = useCallback((): string[] => {
+    if (!booking?.assigned_employees || booking.assigned_employees.length === 0) return []
+    if (allEmployees.length === 0) return booking.assigned_employees.map(() => 'Loading...')
+    return booking.assigned_employees.map(id => {
+      const emp = allEmployees.find(e => e.id === id)
+      return emp ? emp.name : 'Unknown'
+    })
+  }, [booking?.assigned_employees, allEmployees])
+
+  // Fetch employee names for display (on initial load)
+  useEffect(() => {
+    if (booking?.assigned_employees && booking.assigned_employees.length > 0 && allEmployees.length === 0) {
+      fetch('/api/employees')
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setAllEmployees(data))
+        .catch(() => {})
+    }
+  }, [booking?.assigned_employees, allEmployees.length])
 
   // Derive checklist phase groups
   const dayBeforeItems = checklistItems.filter(i => i.phase === 'day_before')
@@ -419,6 +499,21 @@ export default function EventDetailPage() {
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Event Type</p>
                 <p className="text-sm text-gray-200">{displayEventType}</p>
+              </div>
+            </div>
+
+            {/* Staffing */}
+            <div className="flex items-start gap-3">
+              <Users className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Staffing</p>
+                <p className="text-sm text-gray-200">
+                  {(booking.staffing || 1) === 2 ? (
+                    <span className="text-blue-300 font-medium">2-Person Event</span>
+                  ) : (
+                    '1-Person Event'
+                  )}
+                </p>
               </div>
             </div>
 
@@ -586,6 +681,92 @@ export default function EventDetailPage() {
             )}
           </div>
         </section>
+
+        {/* ===== ASSIGNED EMPLOYEES ===== */}
+        <section>
+          <h2 className="text-xs font-bold tracking-widest text-amber-400 uppercase mb-3">
+            Assigned To
+          </h2>
+          <div className="bg-gray-900 border border-gray-700/50 rounded-2xl p-5">
+            {booking.assigned_employees && booking.assigned_employees.length > 0 ? (
+              <div className="space-y-2 mb-4">
+                {getAssignedNames().map((name, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Users className="w-3.5 h-3.5 text-blue-400" />
+                    <span className="text-sm text-gray-200">{name}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 mb-4">Not yet assigned</p>
+            )}
+            <button
+              onClick={openAssignModal}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-xl text-sm font-medium hover:bg-blue-500/30 transition-colors"
+            >
+              <UserPlus className="w-4 h-4" />
+              {booking.assigned_employees && booking.assigned_employees.length > 0 ? 'Edit Assignment' : 'Assign Employees'}
+            </button>
+          </div>
+        </section>
+
+        {/* ===== ASSIGNMENT MODAL ===== */}
+        {showAssignModal && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowAssignModal(false)}
+            />
+            <div className="relative bg-gray-900 border border-gray-700/50 rounded-t-2xl sm:rounded-2xl w-full max-w-md mx-auto p-5 max-h-[70vh] flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-semibold text-white">Assign Employees</h3>
+                <button
+                  onClick={() => setShowAssignModal(false)}
+                  className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-1 mb-4">
+                {allEmployees.length === 0 && (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
+                  </div>
+                )}
+                {allEmployees.map(emp => (
+                  <label
+                    key={emp.id}
+                    className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedEmployees.includes(emp.id)}
+                      onChange={() => toggleEmployee(emp.id)}
+                      className="w-4 h-4 rounded border-white/20 bg-white/10 text-amber-500 focus:ring-amber-500/50 accent-amber-500"
+                    />
+                    <span className="text-sm text-gray-200">{emp.name}</span>
+                  </label>
+                ))}
+              </div>
+
+              <button
+                onClick={saveAssignment}
+                disabled={savingAssignment}
+                className="w-full py-3 rounded-xl text-sm font-bold bg-amber-500 text-gray-950 hover:bg-amber-400 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
+              >
+                {savingAssignment ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  `Save (${selectedEmployees.length} selected)`
+                )}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ===== E. DRINK RECIPES ===== */}
         <section>

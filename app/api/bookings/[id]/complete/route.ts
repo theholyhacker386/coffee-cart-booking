@@ -50,11 +50,12 @@ export async function POST(
       return NextResponse.json({ error: 'Booking completed but email failed' }, { status: 500 })
     }
 
-    // Calculate mileage
+    // Calculate mileage based on staffing (1 or 2 employees)
+    const staffing = booking.staffing || 1
     const oneWayMiles = booking.travel_distance_miles || 0
     const roundTripMiles = oneWayMiles * 2
     const perEmployeeMileage = roundTripMiles * 0.725
-    const totalMileage = perEmployeeMileage * 2
+    const totalMileage = perEmployeeMileage * staffing
 
     // Format event date nicely
     const eventDate = new Date(booking.event_date + 'T12:00:00')
@@ -117,7 +118,7 @@ export async function POST(
     <p><strong>Round trip:</strong> ${roundTripMiles.toFixed(1)} miles</p>
     <br>
     <p>Employee 1: ${roundTripMiles.toFixed(1)} mi × $0.725 = $${perEmployeeMileage.toFixed(2)}</p>
-    <p>Employee 2: ${roundTripMiles.toFixed(1)} mi × $0.725 = $${perEmployeeMileage.toFixed(2)}</p>
+    ${staffing === 2 ? `<p>Employee 2: ${roundTripMiles.toFixed(1)} mi × $0.725 = $${perEmployeeMileage.toFixed(2)}</p>` : ''}
     <p class="divider">${'\u2500'.repeat(35)}</p>
     <p class="total-line">Total mileage owed: $${totalMileage.toFixed(2)}</p>
     <p class="note">(This is separate from hourly wages handled through Square)</p>

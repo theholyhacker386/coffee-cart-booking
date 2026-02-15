@@ -21,6 +21,7 @@ export async function GET(request: Request) {
     // Parse filter from query params
     const { searchParams } = new URL(request.url)
     const filter = searchParams.get('filter') || 'upcoming'
+    const assignedOnly = searchParams.get('assigned') === 'true'
 
     const supabase = createServiceRoleClient()
 
@@ -39,6 +40,11 @@ export async function GET(request: Request) {
       bookingsQuery = bookingsQuery
         .gte('event_date', today)
         .order('event_date', { ascending: true })
+    }
+
+    // Filter by assignment if requested
+    if (assignedOnly && session) {
+      bookingsQuery = bookingsQuery.contains('assigned_employees', [session.id])
     }
 
     const { data: bookings, error: bookingsError } = await bookingsQuery

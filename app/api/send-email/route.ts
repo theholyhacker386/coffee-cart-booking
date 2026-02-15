@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 import twilio from 'twilio'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { generateChecklist } from '@/lib/checklist-generator'
+import { sendPushToEligible } from '@/lib/send-push'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -451,6 +452,9 @@ export async function POST(request: NextRequest) {
       const supabase = createServiceRoleClient()
 
       // Insert the booking into cc_bookings
+      // Calculate staffing: 2 people for events with more than 75 drinks
+      const staffing = (numberOfDrinks && numberOfDrinks > 75) ? 2 : 1
+
       const { data: insertedBooking, error: bookingError } = await supabase
         .from('cc_bookings')
         .insert({
@@ -485,6 +489,7 @@ export async function POST(request: NextRequest) {
           how_heard_about_us: howHeardAboutUs || null,
           additional_details: additionalDetails || null,
           signature: signature || null,
+          staffing,
         })
         .select('id')
         .single()
@@ -493,6 +498,26 @@ export async function POST(request: NextRequest) {
         console.error('Error saving booking to Supabase:', bookingError)
       } else if (insertedBooking) {
         console.log('Booking saved to Supabase:', insertedBooking.id)
+
+        // Send push notification to all employees about the new booking
+        try {
+          const dateFormatted = new Date(eventDate + 'T00:00:00').toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+          })
+          const staffingLabel = staffing === 2 ? '2-Person Event' : '1-Person Event'
+
+          await sendPushToEligible(
+            `New Inquiry: ${eventType || 'Event'}`,
+            `${customerName} — ${dateFormatted} at ${eventStartTime}\n${staffingLabel} • ${drinkPackage || 'Public Event'}`,
+            '/employee/dashboard',
+            'new-booking',
+            staffing
+          )
+        } catch (pushError) {
+          console.error('Error sending push notification:', pushError)
+        }
 
         // Generate checklist items for this booking
         const checklistItems = generateChecklist({

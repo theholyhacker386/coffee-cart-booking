@@ -114,7 +114,7 @@ var NetlifyCacheHandler = class {
     }
     if (cacheValue.kind === "PAGE" || cacheValue.kind === "PAGES" || cacheValue.kind === "APP_PAGE" || cacheValue.kind === "ROUTE" || cacheValue.kind === "APP_ROUTE") {
       if (cacheValue.headers?.[import_constants.NEXT_CACHE_TAGS_HEADER]) {
-        const cacheTags = cacheValue.headers[import_constants.NEXT_CACHE_TAGS_HEADER].split(/,|%2c/gi);
+        const cacheTags = cacheValue.headers[import_constants.NEXT_CACHE_TAGS_HEADER].split(/,|%2c/gi).map(encodeURI);
         requestContext.responseCacheTags = cacheTags;
       } else if ((cacheValue.kind === "PAGE" || cacheValue.kind === "PAGES") && typeof cacheValue.pageData === "object") {
         const cacheTags = [`_N_T_${key === "/index" ? "/" : encodeURI(key)}`];

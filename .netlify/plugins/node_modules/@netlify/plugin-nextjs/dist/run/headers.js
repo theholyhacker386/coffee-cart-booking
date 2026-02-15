@@ -9,7 +9,7 @@ import "../esm-chunks/chunk-6BT4RYQJ.js";
 // src/run/headers.ts
 import { recordWarning } from "./handlers/tracer.cjs";
 import { getMemoizedKeyValueStoreBackedByRegionalBlobStore } from "./storage/storage.cjs";
-var ALL_VARIATIONS = Symbol.for("ALL_VARIATIONS");
+var ALL_VARIATIONS = /* @__PURE__ */ Symbol.for("ALL_VARIATIONS");
 var NetlifyVaryKeys = /* @__PURE__ */ new Set(["header", "language", "cookie", "query", "country"]);
 var isNetlifyVaryKey = (key) => NetlifyVaryKeys.has(key);
 var generateNetlifyVaryValues = ({
@@ -148,7 +148,7 @@ function setCacheControlFromRequestContext(headers, revalidate) {
   headers.set("netlify-cdn-cache-control", cdnCacheControl);
 }
 var setCacheControlHeaders = ({ headers, status }, request, requestContext) => {
-  if (typeof requestContext.routeHandlerRevalidate !== "undefined" && ["GET", "HEAD"].includes(request.method) && !headers.has("cdn-cache-control") && !headers.has("netlify-cdn-cache-control")) {
+  if (typeof requestContext.routeHandlerRevalidate !== "undefined" && ["GET", "HEAD"].includes(request.method) && (headers.has("x-nextjs-cache") || !headers.has("cdn-cache-control") && !headers.has("netlify-cdn-cache-control"))) {
     setCacheControlFromRequestContext(headers, requestContext.routeHandlerRevalidate);
     return;
   }
@@ -164,21 +164,23 @@ var setCacheControlHeaders = ({ headers, status }, request, requestContext) => {
     }
   }
   const cacheControl = headers.get("cache-control");
-  if (cacheControl !== null && ["GET", "HEAD"].includes(request.method) && !headers.has("cdn-cache-control") && !headers.has("netlify-cdn-cache-control")) {
+  if (cacheControl !== null && ["GET", "HEAD"].includes(request.method) && (headers.has("x-nextjs-cache") || !headers.has("cdn-cache-control") && !headers.has("netlify-cdn-cache-control"))) {
     const browserCacheControl = omitHeaderValues(cacheControl, [
       "s-maxage",
       "stale-while-revalidate"
     ]);
+    const cacheControlForCdnFromNext = headers.get("cdn-cache-control") ?? cacheControl;
     const cdnCacheControl = (
       // if we are serving already stale response, instruct edge to not attempt to cache that response
       headers.get("x-nextjs-cache") === "STALE" ? "public, max-age=0, must-revalidate, durable" : [
-        ...getHeaderValueArray(cacheControl).map(
+        ...getHeaderValueArray(cacheControlForCdnFromNext).map(
           (value) => value === "stale-while-revalidate" ? "stale-while-revalidate=31536000" : value
         ),
         "durable"
       ].join(", ")
     );
     headers.set("cache-control", browserCacheControl || "public, max-age=0, must-revalidate");
+    headers.delete("cdn-cache-control");
     headers.set("netlify-cdn-cache-control", cdnCacheControl);
     return;
   }
