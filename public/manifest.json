@@ -1,6 +1,6 @@
 {
-  "name": "The Porch Coffee Bar - Employee Portal",
-  "short_name": "The Porch",
+  "name": "Cafinator",
+  "short_name": "Cafinator",
   "description": "Employee checklist and event management for The Porch Coffee Bar",
   "start_url": "/employee",
   "display": "standalone",
