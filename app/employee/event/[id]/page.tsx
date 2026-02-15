@@ -148,7 +148,7 @@ function isEventSoonEnoughForDayBefore(eventDate: string): boolean {
 function StatusBadge({ status }: { status: string }) {
   let bgClass = 'bg-amber-500/20 text-amber-300 border-amber-500/30'
   let icon = <Clock className="w-3 h-3" />
-  let label = 'Pending'
+  let label = 'Request'
 
   if (status === 'confirmed') {
     bgClass = 'bg-blue-500/20 text-blue-300 border-blue-500/30'
@@ -196,6 +196,8 @@ export default function EventDetailPage() {
   const [salesSaved, setSalesSaved] = useState(false)
   const [currentEmployeeId, setCurrentEmployeeId] = useState('')
   const [currentEmployeeName, setCurrentEmployeeName] = useState('')
+  const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
 
   // Fetch booking + checklist data
   const fetchData = useCallback(async () => {
@@ -287,6 +289,28 @@ export default function EventDetailPage() {
       setSavingSales(false)
     }
   }, [bookingId, squareSalesInput, cashSalesInput, booking])
+
+  // Handle changing booking status (admin only)
+  const handleStatusChange = useCallback(async (newStatus: string) => {
+    if (!booking) return
+    setUpdatingStatus(true)
+    setShowStatusMenu(false)
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setBooking(prev => prev ? { ...prev, status: updated.status } : prev)
+      }
+    } catch {
+      // Failed to update
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }, [bookingId, booking])
 
   // Handle completing a checklist item (swipe)
   const handleComplete = useCallback(async (itemId: string) => {
@@ -524,7 +548,40 @@ export default function EventDetailPage() {
               {displayEventType} — {booking.customer_name}
             </h1>
           </div>
-          <StatusBadge status={booking.status} />
+          {/* Status badge — tappable for admins */}
+          <div className="relative">
+            {isAdmin && booking.status !== 'completed' ? (
+              <button onClick={() => setShowStatusMenu(!showStatusMenu)} disabled={updatingStatus}>
+                <StatusBadge status={booking.status} />
+              </button>
+            ) : (
+              <StatusBadge status={booking.status} />
+            )}
+
+            {/* Status dropdown for admin */}
+            {showStatusMenu && isAdmin && (
+              <div className="absolute right-0 top-full mt-1 w-40 bg-gray-800 border border-gray-700 rounded-xl shadow-xl z-20 overflow-hidden">
+                {booking.status !== 'pending' && (
+                  <button
+                    onClick={() => handleStatusChange('pending')}
+                    className="w-full text-left px-4 py-2.5 text-sm text-amber-300 hover:bg-white/5 transition-colors flex items-center gap-2"
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    Request
+                  </button>
+                )}
+                {booking.status !== 'confirmed' && (
+                  <button
+                    onClick={() => handleStatusChange('confirmed')}
+                    className="w-full text-left px-4 py-2.5 text-sm text-blue-300 hover:bg-white/5 transition-colors flex items-center gap-2"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Confirmed
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

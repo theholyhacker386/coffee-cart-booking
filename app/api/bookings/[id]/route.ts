@@ -63,9 +63,31 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
-    const { assigned_employees, total_sales, square_sales, cash_sales } = body
+    const { assigned_employees, total_sales, square_sales, cash_sales, status } = body
 
     const supabase = createServiceRoleClient()
+
+    // If status is being updated (admin only)
+    if (status !== undefined) {
+      const validStatuses = ['pending', 'confirmed', 'completed']
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+      }
+
+      const { data: updatedBooking, error: updateError } = await supabase
+        .from('cc_bookings')
+        .update({ status })
+        .eq('id', id)
+        .select('*')
+        .single()
+
+      if (updateError) {
+        console.error('Error updating status:', updateError)
+        return NextResponse.json({ error: 'Failed to update status' }, { status: 500 })
+      }
+
+      return NextResponse.json(updatedBooking)
+    }
 
     // If sales data is being updated
     if (total_sales !== undefined || square_sales !== undefined || cash_sales !== undefined) {

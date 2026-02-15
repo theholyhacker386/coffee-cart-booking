@@ -86,7 +86,12 @@ export default function EventCard({
         {status === 'pending' && (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">
             <Clock className="w-3 h-3" />
-            Pending Approval
+            Request
+          </span>
+        )}
+        {status === 'confirmed' && (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
+            Confirmed
           </span>
         )}
       </div>
