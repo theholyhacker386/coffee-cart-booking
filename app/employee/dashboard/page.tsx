@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { LogOut, Loader2, CalendarX } from 'lucide-react'
 import EventCard from '@/components/EventCard'
 import AddToHomeScreenPopup from '@/components/AddToHomeScreenPopup'
+import NotificationPermissionPopup from '@/components/NotificationPermissionPopup'
 
 type FilterTab = 'upcoming' | 'past'
 
@@ -83,6 +84,8 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-950 flex flex-col">
       {/* Add to Home Screen popup (mobile only, first visit) */}
       <AddToHomeScreenPopup />
+      {/* Notification permission request (shows after A2HS is dismissed) */}
+      <NotificationPermissionPopup />
 
       {/* Header */}
       <header className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800/50">
