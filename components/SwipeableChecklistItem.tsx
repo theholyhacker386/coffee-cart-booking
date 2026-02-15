@@ -194,7 +194,7 @@ export default function SwipeableChecklistItem({
         onTouchEnd={handleTouchEnd}
         onMouseDown={handleMouseDown}
       >
-        {/* Desktop only: clickable circle to mark done */}
+        {/* Clickable circle to mark done (works on all devices) */}
         <button
           type="button"
           onClick={(e) => {
@@ -207,11 +207,9 @@ export default function SwipeableChecklistItem({
               }, 400)
             }
           }}
-          className="hidden md:flex w-8 h-8 rounded-full border-2 border-gray-500 items-center justify-center flex-shrink-0 hover:border-emerald-400 hover:bg-emerald-400/10 transition-colors active:scale-90"
+          className="w-7 h-7 rounded-full border-2 border-gray-500 flex items-center justify-center flex-shrink-0 hover:border-emerald-400 hover:bg-emerald-400/10 transition-colors active:scale-90"
           aria-label="Mark as done"
         />
-        {/* Mobile: just a visual circle (swipe to complete) */}
-        <div className="md:hidden w-5 h-5 rounded-full border-2 border-gray-500 flex-shrink-0" />
         <span className="text-sm text-gray-200">{text}</span>
       </div>
     </div>

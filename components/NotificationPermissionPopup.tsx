@@ -25,19 +25,19 @@ export default function NotificationPermissionPopup() {
       if (Date.now() - dismissedAt < 3 * 24 * 60 * 60 * 1000) return // 3 days
     }
 
-    // Wait for the Add to Home Screen popup to potentially show/dismiss first
-    const timer = setTimeout(() => {
-      // Only show if the A2HS popup isn't currently visible
-      const a2hsDismissed = localStorage.getItem('cc_a2hs_dismissed')
-      if (a2hsDismissed || !(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent))) {
-        setShow(true)
+    // Poll until the Add to Home Screen popup is gone, then show
+    const checkAndShow = () => {
+      const a2hsPopup = document.querySelector('[data-a2hs-popup]')
+      if (a2hsPopup) {
+        // A2HS popup is still showing, check again in 1 second
+        setTimeout(checkAndShow, 1000)
       } else {
-        // If on mobile and A2HS hasn't been dismissed yet, wait a bit longer
-        const retryTimer = setTimeout(() => setShow(true), 5000)
-        return () => clearTimeout(retryTimer)
+        setShow(true)
       }
-    }, 2000)
+    }
 
+    // Wait 3 seconds then start checking
+    const timer = setTimeout(checkAndShow, 3000)
     return () => clearTimeout(timer)
   }, [])
 

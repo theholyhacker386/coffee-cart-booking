@@ -43,7 +43,7 @@ export default function AddToHomeScreenPopup() {
   if (!show) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm px-4 pb-6">
+    <div data-a2hs-popup className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm px-4 pb-6">
       <div className="bg-gray-900 border border-gray-700/50 rounded-2xl w-full max-w-md p-5 shadow-2xl animate-in slide-in-from-bottom">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
