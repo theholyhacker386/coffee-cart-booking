@@ -140,11 +140,32 @@ export async function PATCH(
       return NextResponse.json({ error: 'Failed to update assignment' }, { status: 500 })
     }
 
-    // Find newly assigned employees (not in the previous list)
+    // Find newly assigned and removed employees
     const previouslyAssigned: string[] = currentBooking.assigned_employees || []
     const newlyAssigned = assigned_employees.filter(
       (empId: string) => !previouslyAssigned.includes(empId)
     )
+    const removedEmployees = previouslyAssigned.filter(
+      (empId: string) => !assigned_employees.includes(empId)
+    )
+
+    // Create assignment records for newly assigned employees (pending acceptance)
+    if (newlyAssigned.length > 0) {
+      for (const empId of newlyAssigned) {
+        await supabase
+          .from('cc_event_assignments')
+          .upsert({ booking_id: id, employee_id: empId, status: 'pending' }, { onConflict: 'booking_id,employee_id' })
+      }
+    }
+
+    // Remove assignment records for unassigned employees
+    if (removedEmployees.length > 0) {
+      await supabase
+        .from('cc_event_assignments')
+        .delete()
+        .eq('booking_id', id)
+        .in('employee_id', removedEmployees)
+    }
 
     // Send push notification to newly assigned employees
     if (newlyAssigned.length > 0) {
@@ -159,7 +180,7 @@ export async function PATCH(
         await sendPushToAssigned(
           newlyAssigned,
           'You\'ve Been Assigned!',
-          `You've been assigned to ${eventType} on ${dateFormatted}`,
+          `You've been assigned to ${eventType} on ${dateFormatted} — tap to accept`,
           `/employee/event/${id}`,
           'assignment'
         )

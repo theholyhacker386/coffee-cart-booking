@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { EMPLOYEE_COOKIE_NAME, decodeSessionToken } from '@/lib/employee-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Check for valid employee session
     const cookieStore = await cookies()
@@ -20,9 +20,13 @@ export async function GET() {
 
     const supabase = createServiceRoleClient()
 
+    // Check if roles should be included (for admin team management)
+    const includeRole = request.nextUrl.searchParams.get('include_role') === 'true'
+    const selectFields = includeRole ? 'id, name, role, created_at' : 'id, name'
+
     const { data: employees, error } = await supabase
       .from('cc_employees')
-      .select('id, name')
+      .select(selectFields)
       .order('name', { ascending: true })
 
     if (error) {
