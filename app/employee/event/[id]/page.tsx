@@ -199,6 +199,7 @@ export default function EventDetailPage() {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [assignmentStatuses, setAssignmentStatuses] = useState<Record<string, string>>({})
+  const [interestedNames, setInterestedNames] = useState<{ id: string; name: string }[]>([])
   const [respondingToAssignment, setRespondingToAssignment] = useState(false)
 
   // Fetch booking + checklist data
@@ -471,17 +472,22 @@ export default function EventDetailPage() {
     }
   }, [booking?.assigned_employees, allEmployees.length])
 
-  // Fetch assignment acceptance statuses
+  // Fetch assignment/interest statuses
   const fetchAssignmentStatuses = useCallback(async () => {
     try {
       const res = await fetch(`/api/bookings/${bookingId}/assignment`)
       if (res.ok) {
         const data = await res.json()
         const statusMap: Record<string, string> = {}
+        const interested: { id: string; name: string }[] = []
         for (const a of data) {
           statusMap[a.employee_id] = a.status
+          if (a.status === 'interested') {
+            interested.push({ id: a.employee_id, name: a.employee_name })
+          }
         }
         setAssignmentStatuses(statusMap)
+        setInterestedNames(interested)
       }
     } catch {
       // Non-critical
@@ -489,22 +495,43 @@ export default function EventDetailPage() {
   }, [bookingId])
 
   useEffect(() => {
-    if (booking?.assigned_employees && booking.assigned_employees.length > 0) {
+    if (booking) {
       fetchAssignmentStatuses()
     }
-  }, [booking?.assigned_employees, fetchAssignmentStatuses])
+  }, [booking, fetchAssignmentStatuses])
 
-  // Handle employee accepting or declining assignment
-  const handleAssignmentResponse = useCallback(async (response: 'accepted' | 'declined') => {
+  // Handle employee expressing interest ("I want to work this")
+  const handleExpressInterest = useCallback(async () => {
     setRespondingToAssignment(true)
     try {
       const res = await fetch(`/api/bookings/${bookingId}/assignment`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: response }),
+        method: 'POST',
       })
       if (res.ok) {
-        setAssignmentStatuses(prev => ({ ...prev, [currentEmployeeId]: response }))
+        setAssignmentStatuses(prev => ({ ...prev, [currentEmployeeId]: 'interested' }))
+        setInterestedNames(prev => [...prev, { id: currentEmployeeId, name: currentEmployeeName }])
+      }
+    } catch {
+      // Failed
+    } finally {
+      setRespondingToAssignment(false)
+    }
+  }, [bookingId, currentEmployeeId, currentEmployeeName])
+
+  // Handle employee withdrawing interest
+  const handleWithdrawInterest = useCallback(async () => {
+    setRespondingToAssignment(true)
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/assignment`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        setAssignmentStatuses(prev => {
+          const copy = { ...prev }
+          delete copy[currentEmployeeId]
+          return copy
+        })
+        setInterestedNames(prev => prev.filter(e => e.id !== currentEmployeeId))
       }
     } catch {
       // Failed
@@ -999,84 +1026,106 @@ export default function EventDetailPage() {
           </div>
         </section>
 
-        {/* ===== ASSIGNED EMPLOYEES ===== */}
+        {/* ===== STAFFING SECTION ===== */}
         <section>
           <h2 className="text-xs font-bold tracking-widest text-amber-400 uppercase mb-3">
-            Assigned To
+            Staffing
           </h2>
           <div className="bg-gray-900 border border-gray-700/50 rounded-2xl p-5">
-            {booking.assigned_employees && booking.assigned_employees.length > 0 ? (
-              <div className="space-y-3 mb-4">
-                {booking.assigned_employees.map((empId, idx) => {
-                  const emp = allEmployees.find(e => e.id === empId)
-                  const name = emp ? emp.name : getAssignedNames()[idx] || 'Loading...'
-                  const assignStatus = assignmentStatuses[empId]
 
-                  return (
-                    <div key={empId} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Users className="w-3.5 h-3.5 text-blue-400" />
-                        <span className="text-sm text-gray-200">{name}</span>
-                      </div>
-                      {assignStatus === 'accepted' && (
+            {/* Assigned employees (admin picked these) */}
+            {booking.assigned_employees && booking.assigned_employees.length > 0 && (
+              <div className="mb-4">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-2">Assigned</p>
+                <div className="space-y-2">
+                  {booking.assigned_employees.map((empId, idx) => {
+                    const emp = allEmployees.find(e => e.id === empId)
+                    const name = emp ? emp.name : getAssignedNames()[idx] || 'Loading...'
+                    return (
+                      <div key={empId} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="text-sm text-gray-200">{name}</span>
+                        </div>
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                          <CheckCircle2 className="w-2.5 h-2.5" />
-                          Accepted
+                          Assigned
                         </span>
-                      )}
-                      {assignStatus === 'declined' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-500/20 text-red-300 border border-red-500/30">
-                          <X className="w-2.5 h-2.5" />
-                          Declined
-                        </span>
-                      )}
-                      {assignStatus === 'pending' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                          <Clock className="w-2.5 h-2.5" />
-                          Pending
-                        </span>
-                      )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Who's interested — visible to admin */}
+            {isAdmin && interestedNames.length > 0 && (
+              <div className="mb-4">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-2">Wants to Work This</p>
+                <div className="space-y-2">
+                  {interestedNames.map(emp => (
+                    <div key={emp.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="text-sm text-gray-200">{emp.name}</span>
+                      </div>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        Interested
+                      </span>
                     </div>
-                  )
-                })}
+                  ))}
+                </div>
               </div>
-            ) : (
-              <p className="text-sm text-gray-500 mb-4">Not yet assigned</p>
             )}
 
-            {/* Accept/Decline buttons for the current employee if they're assigned and haven't responded */}
-            {booking.assigned_employees?.includes(currentEmployeeId) &&
-             assignmentStatuses[currentEmployeeId] === 'pending' && (
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={() => handleAssignmentResponse('accepted')}
-                  disabled={respondingToAssignment}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 active:scale-[0.98] disabled:opacity-50 transition-all"
-                >
+            {/* No one assigned yet */}
+            {(!booking.assigned_employees || booking.assigned_employees.length === 0) && interestedNames.length === 0 && (
+              <p className="text-sm text-gray-500 mb-4">No one assigned yet</p>
+            )}
+
+            {/* "I Want to Work This" button for non-admin employees */}
+            {!isAdmin && currentEmployeeId && !assignmentStatuses[currentEmployeeId] && (
+              <button
+                onClick={handleExpressInterest}
+                disabled={respondingToAssignment}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-500 to-amber-600 text-gray-950 hover:from-amber-400 hover:to-amber-500 active:scale-[0.98] disabled:opacity-50 transition-all mb-3"
+              >
+                {respondingToAssignment ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
                   <CheckCircle2 className="w-4 h-4" />
-                  Accept
-                </button>
+                )}
+                I Want to Work This!
+              </button>
+            )}
+
+            {/* Already expressed interest */}
+            {!isAdmin && assignmentStatuses[currentEmployeeId] === 'interested' && (
+              <div className="mb-3">
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-2">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm text-amber-300">You expressed interest — waiting for admin to assign</span>
+                </div>
                 <button
-                  onClick={() => handleAssignmentResponse('declined')}
+                  onClick={handleWithdrawInterest}
                   disabled={respondingToAssignment}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 active:scale-[0.98] disabled:opacity-50 transition-all"
+                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
                 >
-                  <X className="w-4 h-4" />
-                  Decline
+                  Withdraw interest
                 </button>
               </div>
             )}
 
-            {/* Show accepted/declined message for current employee */}
-            {booking.assigned_employees?.includes(currentEmployeeId) &&
-             assignmentStatuses[currentEmployeeId] === 'accepted' && (
-              <p className="text-xs text-emerald-400 mb-4">You accepted this event</p>
-            )}
-            {booking.assigned_employees?.includes(currentEmployeeId) &&
-             assignmentStatuses[currentEmployeeId] === 'declined' && (
-              <p className="text-xs text-red-400 mb-4">You declined this event</p>
+            {/* Already assigned by admin — employee view */}
+            {!isAdmin && booking.assigned_employees?.includes(currentEmployeeId) && (
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 mb-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span className="text-sm text-emerald-300">You&apos;re assigned to this event</span>
+                </div>
+              </div>
             )}
 
+            {/* Admin assign button */}
             {isAdmin && (
               <button
                 onClick={openAssignModal}

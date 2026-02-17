@@ -87,6 +87,64 @@ export async function sendPushToAll(title: string, body: string, url?: string, t
 }
 
 /**
+ * Send push notifications only to admin/manager employees.
+ * Used when employees express interest and admin needs to be notified.
+ */
+export async function sendPushToAdmins(
+  title: string,
+  body: string,
+  url?: string,
+  tag?: string
+) {
+  initVapid()
+
+  const supabase = createServiceRoleClient()
+
+  // Get all admin employee IDs
+  const { data: admins } = await supabase
+    .from('cc_employees')
+    .select('id')
+    .eq('role', 'admin')
+
+  if (!admins || admins.length === 0) return 0
+
+  const adminIds = admins.map(a => a.id)
+
+  const { data: subscriptions } = await supabase
+    .from('cc_push_subscriptions')
+    .select('employee_id, subscription')
+    .in('employee_id', adminIds)
+
+  if (!subscriptions || subscriptions.length === 0) return 0
+
+  let sent = 0
+  for (const sub of subscriptions) {
+    try {
+      await webpush.sendNotification(
+        sub.subscription,
+        JSON.stringify({
+          title,
+          body,
+          url: url || '/employee/dashboard',
+          tag: tag || 'porch-notification',
+        })
+      )
+      sent++
+    } catch (err: unknown) {
+      const pushErr = err as { statusCode?: number; message?: string }
+      if (pushErr.statusCode === 404 || pushErr.statusCode === 410) {
+        await supabase
+          .from('cc_push_subscriptions')
+          .delete()
+          .eq('subscription', sub.subscription)
+      }
+      console.error('Push send error:', pushErr.message)
+    }
+  }
+  return sent
+}
+
+/**
  * Send push notifications only to specific employees (by their IDs).
  * Used for reminders to assigned employees.
  */
