@@ -136,6 +136,7 @@ export default function CreateEventPage() {
   const [trashOnSite, setTrashOnSite] = useState('no')
   const [travelDistanceMiles, setTravelDistanceMiles] = useState('')
   const [travelDriveMinutes, setTravelDriveMinutes] = useState('')
+  const [calculatingDistance, setCalculatingDistance] = useState(false)
   const [additionalDetails, setAdditionalDetails] = useState('')
   const [assignedEmployees, setAssignedEmployees] = useState<string[]>([])
   const [staffing, setStaffing] = useState('1')
@@ -147,6 +148,23 @@ export default function CreateEventPage() {
   const [frequency, setFrequency] = useState('weekly')
   const [recurringEndDate, setRecurringEndDate] = useState('')
   const [ongoingRecurring, setOngoingRecurring] = useState(false)
+
+  // Auto-calculate travel distance when address changes
+  async function calculateDistance(address: string) {
+    if (!address || address.trim().length < 5) return
+    setCalculatingDistance(true)
+    try {
+      const res = await fetch(`/api/distance?destination=${encodeURIComponent(address)}`)
+      if (res.ok) {
+        const data = await res.json()
+        setTravelDistanceMiles(String(data.miles))
+        setTravelDriveMinutes(String(data.minutes))
+      }
+    } catch {
+      // Silently fail — user can still type manually
+    }
+    setCalculatingDistance(false)
+  }
 
   // Check admin access and load employees
   useEffect(() => {
@@ -464,9 +482,16 @@ export default function CreateEventPage() {
                     type="text"
                     value={eventAddress}
                     onChange={e => setEventAddress(e.target.value)}
+                    onBlur={e => calculateDistance(e.target.value)}
                     placeholder="123 Main St, City, State"
                     className={inputClass}
                   />
+                  {calculatingDistance && (
+                    <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Calculating distance from shop...
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -714,6 +739,11 @@ export default function CreateEventPage() {
               Travel
             </h2>
             <div className="bg-gray-900 border border-gray-700/50 rounded-2xl p-5">
+              {travelDistanceMiles && travelDriveMinutes && (
+                <p className="text-xs text-gray-400 mb-3">
+                  Auto-calculated from shop. You can edit if needed.
+                </p>
+              )}
               <div className={sectionClass}>
                 <div>
                   <label className={labelClass}>Distance (miles)</label>

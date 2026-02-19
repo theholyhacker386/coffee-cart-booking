@@ -1,33 +1,38 @@
 {
   "project": "coffee-cart-booking",
-  "current_phase": "building-employee-feature",
+  "current_phase": "operational",
   "completed_tasks": [
     "Add Guest Pay 50-drink minimum guarantee flow",
     "Show package selection for all private event payment methods",
     "Update Jennifer + customer emails with full details for all flows",
     "Fix time picker invalid value bug (replaced with dropdown)",
-    "Deploy to Netlify production"
+    "Deploy to Netlify production",
+    "Add Keiser University recurring Thursdays (26 events, 7 AM, public)",
+    "Assign Oliver Martins to all Keiser events",
+    "Generate checklists for all 26 Keiser events (65 items each)",
+    "Add auto-distance calculation from shop address via Google Maps API",
+    "Update Keiser events with address + travel (4.6 mi, 13 min)"
   ],
   "pending_tasks": [
-    "TASK-1: Supabase tables + RLS",
-    "TASK-2: Supabase client/server helpers",
-    "TASK-3: Wire booking form to Supabase + checklist generator",
-    "TASK-4: Employee auth (sign-up + PIN login)",
-    "TASK-5: Employee dashboard",
-    "TASK-6: Schedule timeline + earnings card",
-    "TASK-7: Event detail page + swipeable checklist",
-    "TASK-8: Fix existing email bugs",
-    "TASK-9: Deploy to Netlify"
+    "Deploy latest changes to Netlify production",
+    "Verify Ollie can see events and checklists on his phone"
   ],
   "next_actions": {
     "ai_tasks": [
-      "Jennifer to confirm checklist items before TASK-3",
-      "Execute Wave 1: TASK-1, TASK-6, TASK-8 in parallel"
+      "Deploy to Netlify with distance API route",
+      "Add more recurring events as Jennifer requests"
     ],
     "human_tasks": [
-      "Jennifer: Review and confirm checklist items (day-before + day-of)"
+      "Ollie: Open app, allow notifications, check tomorrow's Keiser event",
+      "Jennifer: Add more events via admin create-event page"
     ],
     "blocked_on": []
   },
-  "last_updated": "2026-02-14 08:31:00 EST"
+  "last_updated": "2026-02-18 21:06:36 EST",
+  "employees": {
+    "Colby Caldwell": {"role": "admin", "id": "2e890117-7d3b-4d31-8b81-6fc3a4c7331d"},
+    "Oliver Martins": {"role": "employee", "id": "838e701a-6937-4824-a90e-80ded873687f"}
+  },
+  "shop_address": "212 S Beach St, Daytona Beach, FL 32114",
+  "employee_invite_code": "7777"
 }
