@@ -318,6 +318,16 @@ export default function BookingInquiryForm() {
 
     // TODO: Send inquiry to Supabase
 
+    // Track booking inquiry with Meta Pixel
+    if (typeof window !== 'undefined' && (window as any).fbq) {
+      (window as any).fbq('track', 'Lead', {
+        content_name: `Coffee Cart Booking - ${eventCategory}`,
+        content_category: eventCategory,
+        value: totalEstimate,
+        currency: 'USD',
+      })
+    }
+
     // Show success modal
     setShowSuccessModal(true)
   }

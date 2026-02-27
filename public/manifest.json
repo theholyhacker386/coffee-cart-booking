@@ -1,7 +1,7 @@
 {
-  "name": "Cafinator",
-  "short_name": "Cafinator",
-  "description": "Employee checklist and event management for The Porch Coffee Bar",
+  "name": "The Porch Coffee Bar",
+  "short_name": "Porch Coffee",
+  "description": "Premium mobile coffee cart service for weddings, parties, and special events.",
   "start_url": "/employee",
   "display": "standalone",
   "background_color": "#030712",
