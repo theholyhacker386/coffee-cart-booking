@@ -87,6 +87,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       employee: { id: employee.id, name: employee.name, role: employee.role },
+      token,
     })
   } catch (error) {
     console.error('Signup error:', error)

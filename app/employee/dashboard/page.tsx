@@ -102,6 +102,7 @@ export default function DashboardPage() {
   async function handleLogout() {
     setLoggingOut(true)
     try {
+      localStorage.removeItem('cc_session_token')
       await fetch('/api/employee/logout', { method: 'POST' })
       router.push('/employee')
     } catch {

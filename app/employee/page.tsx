@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import PinPad from '@/components/PinPad'
@@ -16,6 +16,36 @@ export default function EmployeeLoginPage() {
   const [loading, setLoading] = useState(false)
   const [pinError, setPinError] = useState(false)
   const [notifyTwoPersonOnly, setNotifyTwoPersonOnly] = useState(false)
+
+  // Auto-login: if we have a saved session in localStorage, restore it
+  useEffect(() => {
+    async function tryAutoLogin() {
+      const savedToken = localStorage.getItem('cc_session_token')
+      if (!savedToken) return
+
+      try {
+        // Try to restore the session by calling the restore endpoint
+        const res = await fetch('/api/employee/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: savedToken }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.token) {
+            localStorage.setItem('cc_session_token', data.token)
+          }
+          router.push('/employee/dashboard')
+        } else {
+          // Token is invalid/expired, clear it
+          localStorage.removeItem('cc_session_token')
+        }
+      } catch {
+        // Silent fail
+      }
+    }
+    tryAutoLogin()
+  }, [router])
 
   const handleSubmit = useCallback(async (pin: string) => {
     setError('')
@@ -58,6 +88,11 @@ export default function EmployeeLoginPage() {
         setPinError(true)
         setLoading(false)
         return
+      }
+
+      // Save token to localStorage as backup (survives cookie clearing)
+      if (data.token) {
+        localStorage.setItem('cc_session_token', data.token)
       }
 
       // Success — go to the employee dashboard

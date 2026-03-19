@@ -53,6 +53,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       employee: { id: employee.id, name: employee.name },
+      token,
     })
   } catch (error) {
     console.error('Login error:', error)
