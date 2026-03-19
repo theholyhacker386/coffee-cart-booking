@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { sendPushToAssigned, sendPushToEligible } from '@/lib/send-push'
 
+/**
+ * Format a Date as YYYY-MM-DD using its local (faked ET) values, NOT UTC.
+ */
+function formatDateLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Security check: verify the cron secret
@@ -22,10 +29,10 @@ export async function GET(request: NextRequest) {
     // Get tomorrow's date in Eastern Time (YYYY-MM-DD format)
     const tomorrowET = new Date(nowET)
     tomorrowET.setDate(tomorrowET.getDate() + 1)
-    const tomorrowStr = tomorrowET.toISOString().split('T')[0]
+    const tomorrowStr = formatDateLocal(tomorrowET)
 
     // Get today's date in Eastern Time
-    const todayStr = nowET.toISOString().split('T')[0]
+    const todayStr = formatDateLocal(nowET)
 
     // ── 1. Day-Before Reminders ──
     // Only send between 7:00 AM and 7:59 AM Eastern Time
@@ -76,8 +83,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ── 2. Hour-Before Reminders ──
-    // These still check based on actual event timing (keeps existing logic)
-    const now = new Date()
+    // Use Eastern Time for event time calculations too
     const { data: todayBookings, error: todayErr } = await supabase
       .from('cc_bookings')
       .select('id, customer_name, event_type, custom_event_type, event_start_time, travel_drive_minutes, assigned_employees, staffing')
@@ -91,19 +97,20 @@ export async function GET(request: NextRequest) {
 
     if (todayBookings && todayBookings.length > 0) {
       for (const booking of todayBookings) {
-        // Calculate "arrive at shop" time:
+        // Calculate "arrive at shop" time in Eastern Time:
         // event_start_time - 30min setup - drive_time - 20min buffer
-        const arriveAtShopTime = calculateArriveAtShopTime(
+        const arriveMinutesFromMidnight = calculateArriveMinutes(
           booking.event_start_time,
-          booking.travel_drive_minutes || 0,
-          todayStr
+          booking.travel_drive_minutes || 0
         )
 
-        if (!arriveAtShopTime) continue
+        if (arriveMinutesFromMidnight === null) continue
 
-        // Check if arrive_at_shop is between 30min and 90min from now
-        const diffMs = arriveAtShopTime.getTime() - now.getTime()
-        const diffMin = diffMs / (1000 * 60)
+        // Current Eastern Time in minutes from midnight
+        const nowMinutes = currentHourET * 60 + nowET.getMinutes()
+
+        // How many minutes until they need to arrive at the shop
+        const diffMin = arriveMinutesFromMidnight - nowMinutes
 
         if (diffMin >= 30 && diffMin <= 90) {
           const eventType = booking.custom_event_type || booking.event_type || 'Event'
@@ -141,7 +148,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       remindersSent,
-      checkedAt: now.toISOString(),
+      checkedAt: new Date().toISOString(),
       easternHour: currentHourET,
     })
   } catch (error) {
@@ -151,16 +158,15 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Calculate the time an employee should arrive at the shop.
+ * Calculate the "arrive at shop" time as minutes from midnight (Eastern Time).
  * Formula: event start time - 30min setup - drive time - 20min buffer
+ * Returns minutes from midnight, or null if parsing fails.
  */
-function calculateArriveAtShopTime(
+function calculateArriveMinutes(
   eventStartTime: string,
-  travelDriveMinutes: number,
-  dateStr: string
-): Date | null {
+  travelDriveMinutes: number
+): number | null {
   try {
-    // Parse the event start time (e.g., "2:00 PM", "10:00 AM")
     const timeMatch = eventStartTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
     if (!timeMatch) return null
 
@@ -171,14 +177,10 @@ function calculateArriveAtShopTime(
     if (period === 'PM' && hours !== 12) hours += 12
     if (period === 'AM' && hours === 12) hours = 0
 
-    const eventTime = new Date(dateStr + 'T00:00:00')
-    eventTime.setHours(hours, minutes, 0, 0)
-
-    // Subtract: 30min setup + drive time + 20min buffer
+    const eventMinutes = hours * 60 + minutes
     const totalMinutesBefore = 30 + travelDriveMinutes + 20
-    const arriveTime = new Date(eventTime.getTime() - totalMinutesBefore * 60 * 1000)
 
-    return arriveTime
+    return eventMinutes - totalMinutesBefore
   } catch {
     return null
   }

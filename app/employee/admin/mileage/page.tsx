@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeft, Loader2, Shield, Car, Calendar } from 'lucide-react'
+import { ArrowLeft, Loader2, Car } from 'lucide-react'
 
 interface Employee {
   id: string

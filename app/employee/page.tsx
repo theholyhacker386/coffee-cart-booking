@@ -16,15 +16,18 @@ export default function EmployeeLoginPage() {
   const [loading, setLoading] = useState(false)
   const [pinError, setPinError] = useState(false)
   const [notifyTwoPersonOnly, setNotifyTwoPersonOnly] = useState(false)
+  const [restoring, setRestoring] = useState(true)
 
   // Auto-login: if we have a saved session in localStorage, restore it
   useEffect(() => {
     async function tryAutoLogin() {
       const savedToken = localStorage.getItem('cc_session_token')
-      if (!savedToken) return
+      if (!savedToken) {
+        setRestoring(false)
+        return
+      }
 
       try {
-        // Try to restore the session by calling the restore endpoint
         const res = await fetch('/api/employee/restore', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -36,13 +39,14 @@ export default function EmployeeLoginPage() {
             localStorage.setItem('cc_session_token', data.token)
           }
           router.push('/employee/dashboard')
+          return
         } else {
-          // Token is invalid/expired, clear it
           localStorage.removeItem('cc_session_token')
         }
       } catch {
         // Silent fail
       }
+      setRestoring(false)
     }
     tryAutoLogin()
   }, [router])
@@ -108,6 +112,25 @@ export default function EmployeeLoginPage() {
     setMode(newMode)
     setError('')
     setPinError(false)
+  }
+
+  // Show loading screen while checking for saved session
+  if (restoring) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Image
+            src="/the porch coffe bar logo.png"
+            alt="The Porch Coffee Bar"
+            width={60}
+            height={60}
+            className="rounded-full"
+            priority
+          />
+          <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    )
   }
 
   return (
