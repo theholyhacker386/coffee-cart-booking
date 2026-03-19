@@ -35,9 +35,9 @@ export default function DashboardPage() {
   const [employeeName, setEmployeeName] = useState('')
   const [employeeRole, setEmployeeRole] = useState('')
   const [loggingOut, setLoggingOut] = useState(false)
-  const [calendarEvents, setCalendarEvents] = useState<{ id: string; event_date: string; customer_name: string; event_type: string; custom_event_type?: string | null }[]>([])
+  const [calendarEvents, setCalendarEvents] = useState<Booking[]>([])
 
-  // Fetch the employee's name from the session + calendar events
+  // Fetch the employee's name from the session
   useEffect(() => {
     async function fetchEmployee() {
       try {
@@ -51,19 +51,7 @@ export default function DashboardPage() {
         // If we can't get the name, that's okay — the header just won't show it
       }
     }
-    async function fetchCalendarEvents() {
-      try {
-        const res = await fetch('/api/bookings?filter=upcoming&assigned=true')
-        if (res.ok) {
-          const data = await res.json()
-          setCalendarEvents(data)
-        }
-      } catch {
-        // Calendar is a nice-to-have, don't block on failure
-      }
-    }
     fetchEmployee()
-    fetchCalendarEvents()
   }, [])
 
   // Fetch bookings whenever the active tab or assignment filter changes
@@ -86,9 +74,29 @@ export default function DashboardPage() {
     }
   }, [])
 
+  // Fetch calendar events (all upcoming assigned to this employee)
+  const fetchCalendarEvents = useCallback(async () => {
+    try {
+      const res = await fetch('/api/bookings?filter=upcoming&assigned=true')
+      if (res.ok) {
+        const data = await res.json()
+        setCalendarEvents(data)
+      }
+    } catch {
+      // silent fail
+    }
+  }, [])
+
   useEffect(() => {
     fetchBookings(activeTab, assignmentFilter)
   }, [activeTab, assignmentFilter, fetchBookings])
+
+  // Load calendar events once employee session is confirmed
+  useEffect(() => {
+    if (employeeName) {
+      fetchCalendarEvents()
+    }
+  }, [employeeName, fetchCalendarEvents])
 
   // Handle logout
   async function handleLogout() {
