@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Shield, Plus, ArrowLeft, Loader2, Users } from 'lucide-react'
+import { Shield, Plus, ArrowLeft, Loader2, Users, Car } from 'lucide-react'
 
 export default function AdminPage() {
   const router = useRouter()
@@ -107,6 +107,19 @@ export default function AdminPage() {
             <div className="text-left">
               <h3 className="text-base font-semibold text-white">Manage Team</h3>
               <p className="text-sm text-gray-400">Promote employees to manager</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => router.push('/employee/admin/mileage')}
+            className="w-full flex items-center gap-4 bg-gray-900 border border-gray-700/50 rounded-2xl p-5 hover:border-emerald-500/30 hover:bg-gray-800 transition-all duration-200 active:scale-[0.98]"
+          >
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/20">
+              <Car className="w-6 h-6 text-emerald-400" />
+            </div>
+            <div className="text-left">
+              <h3 className="text-base font-semibold text-white">Mileage Report</h3>
+              <p className="text-sm text-gray-400">View employee miles by date range</p>
             </div>
           </button>
 

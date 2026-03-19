@@ -24,7 +24,7 @@ export async function verifyPin(pin: string, hash: string): Promise<boolean> {
 
 // Create a session token: base64-encoded JSON with id, name, role, and expiration
 export function createSessionToken(id: string, name: string, role: string = 'employee'): string {
-  const exp = Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 days from now
+  const exp = Date.now() + 90 * 24 * 60 * 60 * 1000 // 90 days from now
   const payload = JSON.stringify({ id, name, role, exp })
   // btoa works in Node 16+ and all modern browsers
   return btoa(payload)
@@ -56,6 +56,6 @@ export const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax' as const,
-  maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+  maxAge: 90 * 24 * 60 * 60, // 90 days in seconds
   path: '/',
 }

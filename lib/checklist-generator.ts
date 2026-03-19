@@ -40,10 +40,11 @@ export interface ChecklistItem {
 
 // Drink recipes reference — displayed on event page, not in checklist
 export const DRINK_RECIPES = {
-  matcha: '2 oz matcha',
-  coffee16: '16oz coffee: 3oz cold brew',
-  coffee20: '20oz coffee: 4oz cold brew',
-  coldBrew16: '16oz cold brew: 4oz cold brew + water',
+  matcha: '16oz cup — fill milk close to top, pour 2 oz matcha on top + syrup',
+  coffee16: '16oz coffee — 1 oz syrup + milk',
+  coffee20: '20oz coffee — 1.25 oz syrup + milk',
+  coldFoam: 'Cold Foam — 2 oz heavy cream + 0.5 oz desired syrup',
+  chai: 'Chai — 5 oz chai + 5 oz milk',
 }
 
 function formatEventDate(dateStr?: string): string {
@@ -59,6 +60,27 @@ function formatEventDate(dateStr?: string): string {
   } catch {
     return dateStr
   }
+}
+
+/**
+ * Calculate milk quantities based on number of drinks.
+ * Each drink uses ~9oz of milk. About 30% of drinks use alternative milks.
+ * Milk is sold in gallons (128oz).
+ */
+function calculateMilk(numberOfDrinks: number) {
+  const totalOz = numberOfDrinks * 9
+  const wholeOz = totalOz * 0.70
+  const altOz = totalOz * 0.30
+  // Split alt milk evenly between oat and almond
+  const oatOz = altOz * 0.5
+  const almondOz = altOz * 0.5
+
+  // Convert to gallons (128oz per gallon), round up
+  const wholeGallons = Math.ceil(wholeOz / 128)
+  const oatGallons = Math.ceil(oatOz / 128)
+  const almondGallons = Math.ceil(almondOz / 128)
+
+  return { wholeGallons, oatGallons, almondGallons }
 }
 
 function hasSprinkles(booking: BookingData): boolean {
@@ -85,13 +107,16 @@ function generatePublicEventChecklist(booking: BookingData): ChecklistItem[] {
   let dayBeforeOrder = 0
   let restockOrder = 0
 
+  const drinks = booking.number_of_drinks || 50
+  const milk = calculateMilk(drinks)
+
   // ── DAY-OF: All essentials (full 23-item list) ──
   const essentials = [
     'Cart',
     'Scale',
     'Coffee beans',
     'Ice',
-    '2 Whole milk',
+    `${milk.wholeGallons} gallon${milk.wholeGallons > 1 ? 's' : ''} Whole milk (${drinks} drinks)`,
     'Caramel Sauce',
     'Syrups — Vanilla, Brown Sugar, White Mocha, Caramel, Raspberry',
     '12oz hot cups',
@@ -124,8 +149,8 @@ function generatePublicEventChecklist(booking: BookingData): ChecklistItem[] {
     '2 milk steamer cups',
     'Frother stick',
     'Chai concentrate',
-    '2 Oat milk',
-    '2 Almond milk',
+    `${milk.oatGallons} gallon${milk.oatGallons > 1 ? 's' : ''} Oat milk`,
+    `${milk.almondGallons} gallon${milk.almondGallons > 1 ? 's' : ''} Almond milk`,
   ]
   for (const text of espressoItems) {
     dayOfOrder++
@@ -285,6 +310,8 @@ function generatePrivateEventChecklist(booking: BookingData): ChecklistItem[] {
   let restockOrder = 0
 
   const pkg = booking.drink_package
+  const drinks = booking.number_of_drinks || 50
+  const milk = calculateMilk(drinks)
 
   // ── DAY-OF: Every event essentials ──
   const essentials = [
@@ -292,7 +319,7 @@ function generatePrivateEventChecklist(booking: BookingData): ChecklistItem[] {
     'Scale',
     'Coffee beans',
     'Ice',
-    '2 Whole milk',
+    `${milk.wholeGallons} gallon${milk.wholeGallons > 1 ? 's' : ''} Whole milk (${drinks} drinks)`,
     'Caramel Sauce',
     'Syrups — Vanilla, Brown Sugar, White Mocha, Caramel, Raspberry',
     '12oz hot cups',
@@ -328,8 +355,8 @@ function generatePrivateEventChecklist(booking: BookingData): ChecklistItem[] {
       '2 milk steamer cups',
       'Frother stick',
       'Chai concentrate',
-      '2 Oat milk',
-      '2 Almond milk',
+      `${milk.oatGallons} gallon${milk.oatGallons > 1 ? 's' : ''} Oat milk`,
+      `${milk.almondGallons} gallon${milk.almondGallons > 1 ? 's' : ''} Almond milk`,
     ]
     for (const text of espressoItems) {
       dayOfOrder++

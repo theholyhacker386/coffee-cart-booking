@@ -278,7 +278,7 @@ export default function CreateEventPage() {
 
       const firstBooking = await res.json()
 
-      // If recurring, create additional events
+      // If recurring, create additional events (auto-assigned, no notification needed)
       if (isRecurring && eventDate) {
         const futureDates = generateRecurringDates(
           eventDate,
@@ -292,7 +292,7 @@ export default function CreateEventPage() {
             await fetch('/api/admin/bookings', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...bookingPayload, event_date: date }),
+              body: JSON.stringify({ ...bookingPayload, event_date: date, is_recurring: true }),
             })
           } catch {
             console.error('Failed to create recurring event for', date)

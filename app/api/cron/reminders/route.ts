@@ -13,67 +13,71 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = createServiceRoleClient()
-    const now = new Date()
     let remindersSent = 0
 
-    // Get tomorrow's date in YYYY-MM-DD format
-    const tomorrow = new Date(now)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const tomorrowStr = tomorrow.toISOString().split('T')[0]
+    // Use Eastern Time for all date/time calculations
+    const nowET = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
+    const currentHourET = nowET.getHours()
 
-    // Get today's date in YYYY-MM-DD format
-    const todayStr = now.toISOString().split('T')[0]
+    // Get tomorrow's date in Eastern Time (YYYY-MM-DD format)
+    const tomorrowET = new Date(nowET)
+    tomorrowET.setDate(tomorrowET.getDate() + 1)
+    const tomorrowStr = tomorrowET.toISOString().split('T')[0]
+
+    // Get today's date in Eastern Time
+    const todayStr = nowET.toISOString().split('T')[0]
 
     // ── 1. Day-Before Reminders ──
-    // Find bookings happening TOMORROW that haven't had a day-before reminder sent
-    const { data: tomorrowBookings, error: tomorrowErr } = await supabase
-      .from('cc_bookings')
-      .select('id, customer_name, event_type, custom_event_type, event_date, assigned_employees, staffing')
-      .eq('event_date', tomorrowStr)
-      .eq('day_before_reminder_sent', false)
-      .neq('status', 'completed')
+    // Only send between 7:00 AM and 7:59 AM Eastern Time
+    if (currentHourET === 7) {
+      const { data: tomorrowBookings, error: tomorrowErr } = await supabase
+        .from('cc_bookings')
+        .select('id, customer_name, event_type, custom_event_type, event_date, assigned_employees, staffing')
+        .eq('event_date', tomorrowStr)
+        .eq('day_before_reminder_sent', false)
+        .neq('status', 'completed')
 
-    if (tomorrowErr) {
-      console.error('Error fetching tomorrow bookings:', tomorrowErr)
-    }
+      if (tomorrowErr) {
+        console.error('Error fetching tomorrow bookings:', tomorrowErr)
+      }
 
-    if (tomorrowBookings && tomorrowBookings.length > 0) {
-      for (const booking of tomorrowBookings) {
-        const eventType = booking.custom_event_type || booking.event_type || 'Event'
-        const assignedIds: string[] = booking.assigned_employees || []
+      if (tomorrowBookings && tomorrowBookings.length > 0) {
+        for (const booking of tomorrowBookings) {
+          const eventType = booking.custom_event_type || booking.event_type || 'Event'
+          const assignedIds: string[] = booking.assigned_employees || []
 
-        if (assignedIds.length > 0) {
-          // Send only to assigned employees
-          await sendPushToAssigned(
-            assignedIds,
-            'Reminder: Event Tomorrow!',
-            `${booking.customer_name}'s ${eventType} is tomorrow! Call the shop to check if the prep list is ready.`,
-            `/employee/event/${booking.id}`,
-            'day-before-reminder'
-          )
-        } else {
-          // No one assigned yet — send to all eligible employees as fallback
-          await sendPushToEligible(
-            'Reminder: Event Tomorrow!',
-            `${booking.customer_name}'s ${eventType} is tomorrow! Call the shop to check if the prep list is ready.`,
-            `/employee/event/${booking.id}`,
-            'day-before-reminder',
-            booking.staffing || 1
-          )
+          if (assignedIds.length > 0) {
+            await sendPushToAssigned(
+              assignedIds,
+              'Reminder: Event Tomorrow!',
+              `${booking.customer_name}'s ${eventType} is tomorrow! Call the shop to check if the prep list is ready.`,
+              `/employee/event/${booking.id}`,
+              'day-before-reminder'
+            )
+          } else {
+            await sendPushToEligible(
+              'Reminder: Event Tomorrow!',
+              `${booking.customer_name}'s ${eventType} is tomorrow! Call the shop to check if the prep list is ready.`,
+              `/employee/event/${booking.id}`,
+              'day-before-reminder',
+              booking.staffing || 1
+            )
+          }
+
+          // Mark reminder as sent
+          await supabase
+            .from('cc_bookings')
+            .update({ day_before_reminder_sent: true })
+            .eq('id', booking.id)
+
+          remindersSent++
         }
-
-        // Mark reminder as sent
-        await supabase
-          .from('cc_bookings')
-          .update({ day_before_reminder_sent: true })
-          .eq('id', booking.id)
-
-        remindersSent++
       }
     }
 
     // ── 2. Hour-Before Reminders ──
-    // Find bookings happening TODAY that haven't had an hour-before reminder sent
+    // These still check based on actual event timing (keeps existing logic)
+    const now = new Date()
     const { data: todayBookings, error: todayErr } = await supabase
       .from('cc_bookings')
       .select('id, customer_name, event_type, custom_event_type, event_start_time, travel_drive_minutes, assigned_employees, staffing')
@@ -106,7 +110,6 @@ export async function GET(request: NextRequest) {
           const assignedIds: string[] = booking.assigned_employees || []
 
           if (assignedIds.length > 0) {
-            // Send only to assigned employees
             await sendPushToAssigned(
               assignedIds,
               'Clock In Soon!',
@@ -115,7 +118,6 @@ export async function GET(request: NextRequest) {
               'hour-before-reminder'
             )
           } else {
-            // No one assigned yet — send to all eligible employees as fallback
             await sendPushToEligible(
               'Clock In Soon!',
               `Clock in at the shop in about 1 hour for ${booking.customer_name}'s ${eventType}!`,
@@ -140,6 +142,7 @@ export async function GET(request: NextRequest) {
       success: true,
       remindersSent,
       checkedAt: now.toISOString(),
+      easternHour: currentHourET,
     })
   } catch (error) {
     console.error('Cron reminders error:', error)

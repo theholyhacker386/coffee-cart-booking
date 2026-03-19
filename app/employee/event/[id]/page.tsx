@@ -29,7 +29,6 @@ import {
   Save,
 } from 'lucide-react'
 import ScheduleTimeline from '@/components/ScheduleTimeline'
-import EarningsCard from '@/components/EarningsCard'
 import ChecklistProgress from '@/components/ChecklistProgress'
 import SwipeableChecklistItem from '@/components/SwipeableChecklistItem'
 import { DRINK_RECIPES } from '@/lib/checklist-generator'
@@ -669,18 +668,6 @@ export default function EventDetailPage() {
           />
         </section>
 
-        {/* ===== C. EARNINGS ESTIMATE ===== */}
-        <section>
-          <h2 className="text-xs font-bold tracking-widest text-amber-400 uppercase mb-3">
-            Your Earnings
-          </h2>
-          <EarningsCard
-            extraHours={booking.extra_hours || 0}
-            travelDriveMinutes={booking.travel_drive_minutes || 0}
-            travelDistanceMiles={booking.travel_distance_miles || 0}
-          />
-        </section>
-
         {/* ===== ADMIN PROFIT SUMMARY ===== */}
         {isAdmin && (
           <section>
@@ -1212,13 +1199,19 @@ export default function EventDetailPage() {
             )}
           </button>
           {recipesOpen && (
-            <div className="mt-2 bg-gray-900 border border-gray-700/50 rounded-2xl p-5 space-y-2">
-              {Object.entries(DRINK_RECIPES).map(([key, recipe]) => (
-                <div key={key} className="flex items-baseline gap-2">
-                  <span className="text-xs text-amber-400 font-medium uppercase">{key}:</span>
-                  <span className="text-sm text-gray-300">{recipe}</span>
-                </div>
-              ))}
+            <div className="mt-2 bg-gray-900 border border-gray-700/50 rounded-2xl p-5 space-y-3">
+              {Object.entries(DRINK_RECIPES).map(([key, recipe]) => {
+                const [name, ...rest] = recipe.split(' — ')
+                const instructions = rest.join(' — ')
+                return (
+                  <div key={key}>
+                    <span className="text-xs text-amber-400 font-bold uppercase">{name}</span>
+                    {instructions && (
+                      <p className="text-sm text-gray-300 mt-0.5">{instructions}</p>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </section>

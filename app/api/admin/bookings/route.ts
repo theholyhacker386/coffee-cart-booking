@@ -61,6 +61,7 @@ export async function POST(request: Request) {
       assigned_employees,
       staffing,
       status,
+      is_recurring,
     } = body
 
     // Build the booking record
@@ -150,8 +151,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // Send push notification to assigned employees
-    if (assigned_employees && assigned_employees.length > 0) {
+    // Send push notification to assigned employees (skip for recurring events — already confirmed)
+    if (assigned_employees && assigned_employees.length > 0 && !is_recurring) {
       try {
         const eventType = custom_event_type || event_type || 'Event'
         const dateFormatted = new Date(event_date + 'T12:00:00').toLocaleDateString('en-US', {

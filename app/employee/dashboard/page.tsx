@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { LogOut, Loader2, CalendarX, Settings, Shield } from 'lucide-react'
 import EventCard from '@/components/EventCard'
+import EventCalendar from '@/components/EventCalendar'
 import AddToHomeScreenPopup from '@/components/AddToHomeScreenPopup'
 import NotificationPermissionPopup from '@/components/NotificationPermissionPopup'
 
@@ -34,8 +35,9 @@ export default function DashboardPage() {
   const [employeeName, setEmployeeName] = useState('')
   const [employeeRole, setEmployeeRole] = useState('')
   const [loggingOut, setLoggingOut] = useState(false)
+  const [calendarEvents, setCalendarEvents] = useState<{ id: string; event_date: string; customer_name: string; event_type: string; custom_event_type?: string | null }[]>([])
 
-  // Fetch the employee's name from the session
+  // Fetch the employee's name from the session + calendar events
   useEffect(() => {
     async function fetchEmployee() {
       try {
@@ -49,7 +51,19 @@ export default function DashboardPage() {
         // If we can't get the name, that's okay — the header just won't show it
       }
     }
+    async function fetchCalendarEvents() {
+      try {
+        const res = await fetch('/api/bookings?filter=upcoming&assigned=true')
+        if (res.ok) {
+          const data = await res.json()
+          setCalendarEvents(data)
+        }
+      } catch {
+        // Calendar is a nice-to-have, don't block on failure
+      }
+    }
     fetchEmployee()
+    fetchCalendarEvents()
   }, [])
 
   // Fetch bookings whenever the active tab or assignment filter changes
@@ -149,6 +163,11 @@ export default function DashboardPage() {
 
       {/* Main content */}
       <main className="flex-1 px-4 pb-8 max-w-lg mx-auto w-full">
+        {/* Calendar */}
+        <div className="mt-4 mb-2">
+          <EventCalendar events={calendarEvents} />
+        </div>
+
         {/* Tab buttons */}
         <div className="flex bg-white/5 rounded-xl p-1 my-5">
           <button
